@@ -1,0 +1,27 @@
+[project]
+name = "naver-blog-bot"
+version = "0.1.0"
+description = "Local CLI for drafting Naver Blog posts from photos and memos."
+requires-python = ">=3.11"
+dependencies = [
+  "anthropic>=0.72.0",
+  "pydantic>=2.10.0",
+  "pydantic-settings>=2.6.0",
+  "typer>=0.21.1",
+]
+
+[project.scripts]
+naver-bot = "naver_blog_bot.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
