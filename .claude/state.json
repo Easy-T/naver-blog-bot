@@ -2,13 +2,11 @@
   "schema_version": 1,
   "project_name": "naver-blog-bot",
   "created_at": "2026-05-02",
-
   "cycle": {
-    "count": 0,
-    "last_completed_at": null,
-    "last_cycle_id": null
+    "count": 1,
+    "last_completed_at": "2026-05-03",
+    "last_cycle_id": "2026-05-03-doctor-hardening"
   },
-
   "features": {
     "v2_enabled": false,
     "v2_enabled_at": null,
@@ -17,15 +15,13 @@
     "v3_enabled_at": null,
     "v3_skipped_permanently": false
   },
-
   "non_obvious": {
-    "active_count": 0,
+    "active_count": 1,
     "archive_count": 0,
     "last_archived_at": null
   },
-
   "audit": {
-    "last_doctor_run": "2026-05-02",
-    "last_drift_check": "2026-05-02"
+    "last_doctor_run": "2026-05-03",
+    "last_drift_check": "2026-05-03"
   }
 }

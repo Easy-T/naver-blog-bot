@@ -1,4 +1,4 @@
-**Status:** active
+**Status:** completed
 **RPI-Cycle:** 1
 **Started:** 2026-05-03
 
@@ -332,7 +332,7 @@ Expected: `setup/doctor.sh` is modified. `plugins/installed_plugins.json` and `p
 **Files:**
 - Modify: `/c/Users/12132/.claude/setup/doctor.sh`
 
-- [ ] **Step 1: Ask before committing global repo changes**
+- [x] **Step 1: Ask before committing global repo changes**
 
 Global `.claude` is a separate repository and may contain unrelated plugin metadata changes. Ask the user before committing the global doctor change.
 
@@ -342,7 +342,7 @@ Expected user-facing text:
 Global doctor hardening is verified. Do you want me to commit only setup/doctor.sh in C:\Users\12132\.claude now?
 ```
 
-- [ ] **Step 2: If approved, stage only `setup/doctor.sh`**
+- [x] **Step 2: If approved, stage only `setup/doctor.sh`**
 
 Run:
 
@@ -353,7 +353,7 @@ git -C /c/Users/12132/.claude diff --cached --stat
 
 Expected: cached diff contains only `setup/doctor.sh`.
 
-- [ ] **Step 3: Commit with explicit message**
+- [x] **Step 3: Commit with explicit message**
 
 Run:
 
