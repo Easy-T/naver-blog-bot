@@ -15,8 +15,8 @@ class Draft(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def preview_text(self) -> str:
-        photos = "\n".join(f"- {path.as_posix()}" for path in self.photo_paths) or "- (none)"
-        memes = "\n".join(f"- {path.as_posix()}" for path in self.selected_memes) or "- (none)"
+        photos = "\n".join(f"- {path}" for path in self.photo_paths) or "- (none)"
+        memes = "\n".join(f"- {path}" for path in self.selected_memes) or "- (none)"
         ogq = self.ogq_artwork_id or "(none)"
         return (
             f"# {self.title}\n\n"
