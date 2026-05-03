@@ -1,10 +1,10 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
 from naver_blog_bot.config import Settings
-from naver_blog_bot.meme_library.models import MemeIndex
+from naver_blog_bot.meme_library.models import MemeAsset, MemeIndex
 from naver_blog_bot.post_generator.drafts import draft_id_from_time
 from naver_blog_bot.post_generator.models import Draft
 from naver_blog_bot.style_profiler.models import StyleProfile
@@ -20,7 +20,7 @@ class TextCompleter(Protocol):
         *,
         system_prompt: str,
         user_prompt: str,
-        cacheable_context: list[str],
+        cacheable_context: Sequence[str],
     ) -> str:
         ...
 
@@ -71,7 +71,9 @@ class PostGenerator:
             created_at=created_at,
         )
 
-    def _build_user_prompt(self, photo_paths, memo, selected_memes) -> str:
+    def _build_user_prompt(
+        self, photo_paths: list[Path], memo: str, selected_memes: list[MemeAsset]
+    ) -> str:
         photos = "\n".join(f"- {path}" for path in photo_paths)
         memes = "\n".join(
             f"- {meme.id}: {meme.path} ({', '.join(meme.use_cases)})" for meme in selected_memes
