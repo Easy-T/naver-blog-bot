@@ -85,7 +85,36 @@ gh pr merge --squash --delete-branch
 (아직 정의되지 않음)
 
 ## Common Operations
-(예: cache flush, queue drain, log rotation, certificate renewal 등)
+
+### Install dependencies
+
+```bash
+uv sync --group dev
+```
+
+### Run tests
+
+```bash
+uv run pytest -v
+```
+
+### Initialize local state directories
+
+```bash
+uv run naver-bot init
+```
+
+### Generate a local draft
+
+```bash
+uv run naver-bot draft path/to/photo1.jpg path/to/photo2.jpg "제품 첫인상이 좋고 사진은 두 장"
+```
+
+### Preview a draft
+
+```bash
+uv run naver-bot preview draft-20260503-120000
+```
 
 ## Health Checks / Dashboards
 (아직 정의되지 않음)

@@ -22,3 +22,10 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# naver-blog-bot local state
+config/style_profile.json
+config/meme_index.json
+assets/memes/
+drafts/
+browser-profile/
