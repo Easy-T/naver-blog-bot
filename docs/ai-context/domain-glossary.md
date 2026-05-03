@@ -7,8 +7,11 @@
 
 | 도메인 용어 | 코드 식별자 | 비고 |
 |---|---|---|
-
-(부트스트랩 시 비어 있음. 모듈 추가 시 동시에 갱신)
+| 체험단 후기 | `Draft`, `PostGenerator.generate()` | 사진과 메모를 바탕으로 생성하는 리뷰형 네이버 블로그 초안 |
+| 스타일 프로필 | `StyleProfile`, `config/style_profile.json` | 작성자 문체 신호를 담는 로컬 JSON 데이터 |
+| 짤방 | `MemeAsset`, `MemeIndex`, `config/meme_index.json` | 글 흐름에 넣을 반응 이미지 후보와 사용 맥락 태그 |
+| OGQ 이모티콘 | `Settings.ogq_artwork_id`, `Settings.ogq_name` | 세루리안 OGQ 삽입 위치를 초안에 표시하기 위한 설정 |
+| 초안 ID | `draft_id_from_time()`, `Draft.id` | `draft-YYYYMMDD-HHMMSS` 형식의 로컬 초안 식별자 |
 
 ## Identical-Looking, Different Meaning
 
