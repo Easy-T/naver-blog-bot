@@ -11,7 +11,8 @@ graph TD
   cli --> post_generator["post_generator"]
   cli --> style_profiler["style_profiler"]
   cli --> meme_library["meme_library"]
-  post_generator --> shared_claude["shared/claude_client.py"]
+  cli --> shared_claude["shared/claude_client.py"]
+  post_generator --> shared_claude
   post_generator --> storage["storage/json_store.py"]
   post_generator --> style_profiler
   post_generator --> meme_library
@@ -24,7 +25,7 @@ graph TD
 ## Data Flow
 
 1. User runs `naver-bot draft <photo...> "메모"`.
-2. `cli.py` validates local photo paths and loads `Settings` from `config.py`.
+2. `cli.py` loads `Settings` from `config.py`, ensures local directories exist, and validates that each photo path exists on disk.
 3. `style_profiler.service` loads `config/style_profile.json` or returns an empty `StyleProfile`.
 4. `meme_library.service` loads `config/meme_index.json` or returns an empty `MemeIndex`.
 5. `post_generator.generator.PostGenerator` builds a prompt from memo, photo paths, style profile, meme index, and OGQ settings.

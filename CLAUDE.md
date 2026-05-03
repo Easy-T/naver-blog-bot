@@ -10,7 +10,13 @@ Created: 2026-05-02
 Python 3.11+ / uv / Typer / Playwright / anthropic SDK / pydantic-settings / JSON file storage
 
 ## Modules
-(아직 모듈 없음)
+- `config.py` — pydantic-settings configuration and local state paths
+- `storage/json_store.py` — deterministic UTF-8 JSON persistence helpers
+- `style_profiler` — style profile schema and JSON loader/saver
+- `meme_library` — meme asset/index schema and JSON loader/saver
+- `post_generator` — draft models, repository, and Claude-backed generation service
+- `shared/claude_client.py` — centralized Anthropic SDK text request wrapper
+- `cli.py` — Typer command surface for init, draft, preview, and blocked future commands
 
 ## Top 5 Non-Obvious Patterns
 참조: [docs/ai-context/non-obvious.md](docs/ai-context/non-obvious.md)
