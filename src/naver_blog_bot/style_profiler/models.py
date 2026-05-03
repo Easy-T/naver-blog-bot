@@ -14,4 +14,6 @@ class StyleProfile(BaseModel):
     photo_usage_notes: list[str] = Field(default_factory=list)
 
     def to_cache_text(self) -> str:
-        return json.dumps(self.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True)
+        return json.dumps(
+            self.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True
+        )

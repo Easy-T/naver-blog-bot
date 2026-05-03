@@ -22,11 +22,15 @@ class MemeIndex(BaseModel):
         scored: list[tuple[int, MemeAsset]] = []
         for meme in self.memes:
             score = sum(1 for tag in meme.tags if tag.lower() in normalized)
-            score += sum(1 for use_case in meme.use_cases if use_case.lower() in normalized)
+            score += sum(
+                1 for use_case in meme.use_cases if use_case.lower() in normalized
+            )
             if score > 0:
                 scored.append((score, meme))
         scored.sort(key=lambda item: (-item[0], item[1].id))
         return [meme for _, meme in scored[:limit]]
 
     def to_cache_text(self) -> str:
-        return json.dumps(self.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True)
+        return json.dumps(
+            self.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True
+        )

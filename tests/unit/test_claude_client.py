@@ -10,7 +10,9 @@ class FakeMessages:
 
     def create(self, **kwargs):
         self.last_kwargs = kwargs
-        return SimpleNamespace(content=[SimpleNamespace(type="text", text="생성된 본문")])
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text="생성된 본문")]
+        )
 
 
 class FakeAnthropic:
@@ -38,7 +40,11 @@ def test_complete_text_uses_configured_model_and_cache_blocks() -> None:
     ]
     assert fake.messages.last_kwargs["system"] == [
         {"type": "text", "text": "너는 블로그 글쓰기 도우미다."},
-        {"type": "text", "text": "style profile", "cache_control": {"type": "ephemeral"}},
+        {
+            "type": "text",
+            "text": "style profile",
+            "cache_control": {"type": "ephemeral"},
+        },
         {"type": "text", "text": "meme index", "cache_control": {"type": "ephemeral"}},
     ]
 
@@ -51,4 +57,7 @@ def test_complete_text_accepts_dict_text_blocks_from_fake_clients() -> None:
     fake = SimpleNamespace(messages=DictMessages())
     client = ClaudeTextClient(settings=Settings(), anthropic_client=fake)
 
-    assert client.complete_text(system_prompt="system", user_prompt="user") == "딕셔너리 본문"
+    assert (
+        client.complete_text(system_prompt="system", user_prompt="user")
+        == "딕셔너리 본문"
+    )

@@ -14,7 +14,9 @@ app = typer.Typer(no_args_is_help=True)
 
 
 def build_generator(settings: Settings) -> PostGenerator:
-    return PostGenerator(settings=settings, claude_client=ClaudeTextClient(settings=settings))
+    return PostGenerator(
+        settings=settings, claude_client=ClaudeTextClient(settings=settings)
+    )
 
 
 @app.command("init")
@@ -31,7 +33,9 @@ def init_command() -> None:
 def draft_command(
     items: Annotated[
         list[str],
-        typer.Argument(help="One or more photo paths followed by the memo as the final argument."),
+        typer.Argument(
+            help="One or more photo paths followed by the memo as the final argument."
+        ),
     ],
 ) -> None:
     if len(items) < 2:
@@ -60,7 +64,9 @@ def draft_command(
 
 
 @app.command("preview")
-def preview_command(draft_id: Annotated[str, typer.Argument(help="Draft ID to preview.")]) -> None:
+def preview_command(
+    draft_id: Annotated[str, typer.Argument(help="Draft ID to preview.")],
+) -> None:
     settings = get_settings()
     try:
         draft = DraftRepository(settings.drafts_dir).load(draft_id)
@@ -83,7 +89,9 @@ def meme_build_command() -> None:
 
 
 @app.command("publish")
-def publish_command(draft_id: Annotated[str, typer.Argument(help="Draft ID to publish.")]) -> None:
+def publish_command(
+    draft_id: Annotated[str, typer.Argument(help="Draft ID to publish.")],
+) -> None:
     typer.echo("publish is outside this foundation slice.")
     raise typer.Exit(1)
 

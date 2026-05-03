@@ -21,8 +21,7 @@ class TextCompleter(Protocol):
         system_prompt: str,
         user_prompt: str,
         cacheable_context: Sequence[str],
-    ) -> str:
-        ...
+    ) -> str: ...
 
 
 def extract_title(markdown: str) -> str:
@@ -56,7 +55,10 @@ class PostGenerator:
         selected_memes = meme_index.candidates_for_memo(memo)
         body_markdown = self.claude_client.complete_text(
             system_prompt=SYSTEM_PROMPT,
-            cacheable_context=[style_profile.to_cache_text(), meme_index.to_cache_text()],
+            cacheable_context=[
+                style_profile.to_cache_text(),
+                meme_index.to_cache_text(),
+            ],
             user_prompt=self._build_user_prompt(photo_paths, memo, selected_memes),
         )
         created_at = self.now()
@@ -75,9 +77,13 @@ class PostGenerator:
         self, photo_paths: list[Path], memo: str, selected_memes: list[MemeAsset]
     ) -> str:
         photos = "\n".join(f"- {path}" for path in photo_paths)
-        memes = "\n".join(
-            f"- {meme.id}: {meme.path} ({', '.join(meme.use_cases)})" for meme in selected_memes
-        ) or "- 선택된 짤방 없음"
+        memes = (
+            "\n".join(
+                f"- {meme.id}: {meme.path} ({', '.join(meme.use_cases)})"
+                for meme in selected_memes
+            )
+            or "- 선택된 짤방 없음"
+        )
         return f"""다음 메모와 사진 목록을 바탕으로 네이버 블로그 초안을 작성해줘.
 
 메모:

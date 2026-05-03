@@ -8,7 +8,9 @@ from naver_blog_bot.style_profiler.service import load_style_profile, save_style
 
 
 def test_missing_style_profile_returns_empty_profile(tmp_path: Path) -> None:
-    profile = load_style_profile(tmp_path / "missing.json", "https://blog.naver.com/flowerbend")
+    profile = load_style_profile(
+        tmp_path / "missing.json", "https://blog.naver.com/flowerbend"
+    )
 
     assert profile.blog_url == "https://blog.naver.com/flowerbend"
     assert profile.structure_patterns == []
@@ -65,5 +67,7 @@ def test_meme_index_round_trip_and_candidate_ranking(tmp_path: Path) -> None:
     loaded = load_meme_index(path)
 
     assert loaded == index
-    assert loaded.candidates_for_memo("음식이 맛있고 만족", limit=1)[0].id == "satisfied"
+    assert (
+        loaded.candidates_for_memo("음식이 맛있고 만족", limit=1)[0].id == "satisfied"
+    )
     assert "satisfied.png" in loaded.to_cache_text()

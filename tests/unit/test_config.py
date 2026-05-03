@@ -19,7 +19,9 @@ def test_settings_defaults_point_to_project_local_paths() -> None:
     assert settings.claude_max_tokens == 4000
 
 
-def test_settings_accept_environment_path_overrides(monkeypatch, tmp_path: Path) -> None:
+def test_settings_accept_environment_path_overrides(
+    monkeypatch, tmp_path: Path
+) -> None:
     drafts_dir = tmp_path / "draft-output"
     monkeypatch.setenv("NAVER_BOT_DRAFTS_DIR", str(drafts_dir))
 

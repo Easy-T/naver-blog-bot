@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     config_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "config")
     drafts_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "drafts")
     memes_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "assets" / "memes")
-    browser_profile_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "browser-profile")
+    browser_profile_dir: Path = Field(
+        default_factory=lambda: PROJECT_ROOT / "browser-profile"
+    )
     claude_model: str = "claude-opus-4-7"
     claude_max_tokens: int = 4000
 

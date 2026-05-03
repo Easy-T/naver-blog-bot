@@ -21,7 +21,11 @@ class ClaudeTextClient:
         system_blocks: list[dict[str, Any]] = [{"type": "text", "text": system_prompt}]
         for context in cacheable_context:
             system_blocks.append(
-                {"type": "text", "text": context, "cache_control": {"type": "ephemeral"}}
+                {
+                    "type": "text",
+                    "text": context,
+                    "cache_control": {"type": "ephemeral"},
+                }
             )
 
         message = self.client.messages.create(

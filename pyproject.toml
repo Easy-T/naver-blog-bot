@@ -16,6 +16,7 @@ naver-bot = "naver_blog_bot.cli:main"
 [dependency-groups]
 dev = [
   "pytest>=8.3.0",
+  "ruff>=0.14.0",
 ]
 
 [build-system]

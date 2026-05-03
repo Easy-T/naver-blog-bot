@@ -26,7 +26,9 @@ def configure_paths(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("NAVER_BOT_CONFIG_DIR", str(tmp_path / "config"))
     monkeypatch.setenv("NAVER_BOT_DRAFTS_DIR", str(tmp_path / "drafts"))
     monkeypatch.setenv("NAVER_BOT_MEMES_DIR", str(tmp_path / "assets" / "memes"))
-    monkeypatch.setenv("NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "browser-profile"))
+    monkeypatch.setenv(
+        "NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "browser-profile")
+    )
 
 
 def test_init_creates_local_directories(monkeypatch, tmp_path: Path) -> None:
@@ -96,7 +98,9 @@ def test_preview_outputs_saved_draft(monkeypatch, tmp_path: Path) -> None:
     assert "미리보기 메모" in result.stdout
 
 
-def test_publish_command_is_blocked_in_foundation_slice(monkeypatch, tmp_path: Path) -> None:
+def test_publish_command_is_blocked_in_foundation_slice(
+    monkeypatch, tmp_path: Path
+) -> None:
     configure_paths(monkeypatch, tmp_path)
 
     result = runner.invoke(cli.app, ["publish", "draft-20260503-120000"])
