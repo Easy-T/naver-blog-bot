@@ -71,3 +71,15 @@ def test_meme_index_round_trip_and_candidate_ranking(tmp_path: Path) -> None:
         loaded.candidates_for_memo("음식이 맛있고 만족", limit=1)[0].id == "satisfied"
     )
     assert "satisfied.png" in loaded.to_cache_text()
+
+
+def test_style_profile_default_profile_name() -> None:
+    profile = StyleProfile(blog_url="https://blog.naver.com/flowerbend")
+    assert profile.profile_name == "default"
+
+
+def test_style_profile_explicit_profile_name() -> None:
+    profile = StyleProfile(
+        blog_url="https://blog.naver.com/flowerbend", profile_name="food-review"
+    )
+    assert profile.profile_name == "food-review"
