@@ -92,6 +92,10 @@ def draft_command(
             help="One or more photo paths followed by the memo as the final argument."
         ),
     ],
+    profile: Annotated[
+        str,
+        typer.Option("--profile", help="Style profile name. Default: 'default'."),
+    ] = "default",
 ) -> None:
     if len(items) < 2:
         typer.echo("Error: provide at least one photo path and a memo")
@@ -106,7 +110,21 @@ def draft_command(
         typer.echo(f"Error: photo not found: {missing[0]}")
         raise typer.Exit(1)
 
-    style_profile = load_style_profile(settings.style_profile_path, settings.blog_url)
+    try:
+        validate_profile_name(profile)
+    except ValueError as exc:
+        typer.echo(f"Error: {exc}")
+        raise typer.Exit(1)
+
+    named_path = style_profile_path(settings, profile)
+    if not named_path.exists():
+        typer.echo(
+            f"Style profile not found: {profile}. "
+            f"Run profile-refresh --profile {profile} first."
+        )
+        raise typer.Exit(1)
+
+    style_profile = load_style_profile(named_path, settings.blog_url)
     meme_index = load_meme_index(settings.meme_index_path)
     draft = build_generator(settings).generate(
         photo_paths=photo_paths,

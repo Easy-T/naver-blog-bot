@@ -50,6 +50,16 @@ def test_draft_saves_generated_draft(monkeypatch, tmp_path: Path) -> None:
     photo.write_bytes(b"fake image bytes")
     monkeypatch.setattr(cli, "build_generator", lambda settings: FakeGenerator())
 
+    from naver_blog_bot.config import Settings, ensure_local_directories
+    from naver_blog_bot.style_profiler.models import StyleProfile
+    from naver_blog_bot.style_profiler.service import save_style_profile, style_profile_path
+    settings = Settings()
+    ensure_local_directories(settings)
+    save_style_profile(
+        style_profile_path(settings, "default"),
+        StyleProfile(blog_url=settings.blog_url),
+    )
+
     result = runner.invoke(cli.app, ["draft", str(photo), "제품이 만족스러웠음"])
 
     assert result.exit_code == 0
@@ -172,3 +182,70 @@ def test_profile_refresh_rejects_no_sample_files(monkeypatch, tmp_path: Path) ->
     result = runner.invoke(cli.app, ["profile-refresh"])
 
     assert result.exit_code != 0
+
+
+def test_draft_uses_default_profile_when_omitted(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake image bytes")
+    monkeypatch.setattr(cli, "build_generator", lambda settings: FakeGenerator())
+
+    from naver_blog_bot.config import Settings, ensure_local_directories
+    from naver_blog_bot.style_profiler.models import StyleProfile
+    from naver_blog_bot.style_profiler.service import save_style_profile, style_profile_path
+    settings = Settings()
+    ensure_local_directories(settings)
+    save_style_profile(
+        style_profile_path(settings, "default"),
+        StyleProfile(blog_url=settings.blog_url, profile_name="default"),
+    )
+
+    result = runner.invoke(cli.app, ["draft", str(photo), "메모"])
+
+    assert result.exit_code == 0
+    assert "Draft saved" in result.stdout
+
+
+def test_draft_loads_explicit_named_profile(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake image bytes")
+    monkeypatch.setattr(cli, "build_generator", lambda settings: FakeGenerator())
+
+    from naver_blog_bot.config import Settings, ensure_local_directories
+    from naver_blog_bot.style_profiler.models import StyleProfile
+    from naver_blog_bot.style_profiler.service import save_style_profile, style_profile_path
+    settings = Settings()
+    ensure_local_directories(settings)
+    save_style_profile(
+        style_profile_path(settings, "food-review"),
+        StyleProfile(blog_url=settings.blog_url, profile_name="food-review"),
+    )
+
+    result = runner.invoke(cli.app, ["draft", "--profile", "food-review", str(photo), "메모"])
+
+    assert result.exit_code == 0
+    assert "Draft saved" in result.stdout
+
+
+def test_draft_exits_when_named_profile_missing(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake image bytes")
+    monkeypatch.setattr(cli, "build_generator", lambda settings: FakeGenerator())
+
+    result = runner.invoke(cli.app, ["draft", "--profile", "food-review", str(photo), "메모"])
+
+    assert result.exit_code == 1
+    assert "profile-refresh --profile food-review" in result.stdout
+
+
+def test_draft_rejects_invalid_profile_name(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake image bytes")
+
+    result = runner.invoke(cli.app, ["draft", "--profile", "Invalid!", str(photo), "메모"])
+
+    assert result.exit_code == 1
+    assert "Invalid profile name" in result.stdout
