@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     claude_max_tokens: int = 4000
 
     @property
+    def style_profiles_dir(self) -> Path:
+        return self.config_dir / "style_profiles"
+
+    @property
     def style_profile_path(self) -> Path:
         return self.config_dir / "style_profile.json"
 
@@ -42,6 +46,7 @@ def get_settings() -> Settings:
 def ensure_local_directories(settings: Settings) -> list[Path]:
     paths = [
         settings.config_dir,
+        settings.style_profiles_dir,
         settings.drafts_dir,
         settings.memes_dir,
         settings.browser_profile_dir,

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class StyleProfile(BaseModel):
     blog_url: str
+    profile_name: str = "default"
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     structure_patterns: list[str] = Field(default_factory=list)
     tone_keywords: list[str] = Field(default_factory=list)
