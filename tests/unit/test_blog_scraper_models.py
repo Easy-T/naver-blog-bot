@@ -21,17 +21,19 @@ def test_structured_text_preserves_title_and_block_order() -> None:
         ],
     )
 
-    assert document.to_structured_text() == "\n".join([
-        "제목: 포포몬 첫 사용 후기",
-        "",
-        "오늘 드디어 써봤는데요.",
-        "[이미지]",
-        "첫인상은 생각보다 훨씬 좋았어요!",
-        "[이모티콘:만족하는 표정]",
-        "[이미지]",
-        "[이미지]",
-        "[이모티콘:엄지척]",
-    ])
+    assert document.to_structured_text() == "\n".join(
+        [
+            "제목: 포포몬 첫 사용 후기",
+            "",
+            "오늘 드디어 써봤는데요.",
+            "[이미지]",
+            "첫인상은 생각보다 훨씬 좋았어요!",
+            "[이모티콘:만족하는 표정]",
+            "[이미지]",
+            "[이미지]",
+            "[이모티콘:엄지척]",
+        ]
+    )
 
 
 def test_structured_text_skips_empty_text_blocks() -> None:
