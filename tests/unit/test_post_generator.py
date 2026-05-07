@@ -34,6 +34,7 @@ def test_post_generator_builds_draft_with_cacheable_context() -> None:
         updated_at=now,
         frequent_expressions=["완전 만족"],
         review_conventions=["첫인상 다음 사용 경험"],
+        emoticon_usage_patterns=["만족감 표현 시 이모티콘 사용", "문단 끝 강조에 활용"],
     )
     meme_index = MemeIndex(
         updated_at=now,
@@ -64,6 +65,12 @@ def test_post_generator_builds_draft_with_cacheable_context() -> None:
     assert "사진을 보니" in draft.body_markdown
     assert fake.last_call["system_prompt"].startswith("너는 네이버 블로그")
     assert "완전 만족" in fake.last_call["cacheable_context"][0]
+    assert "만족감 표현 시 이모티콘 사용" in fake.last_call["cacheable_context"][0]
     assert "satisfied.png" in fake.last_call["cacheable_context"][1]
     assert "제품이 만족스럽고 사진은 두 장" in fake.last_call["user_prompt"]
     assert "photos/one.jpg" in fake.last_call["user_prompt"]
+    assert f"[OGQ: {settings.ogq_name} | 상황의도]" in fake.last_call["user_prompt"]
+    assert settings.ogq_artwork_id in fake.last_call["user_prompt"]
+    assert "emoticon_usage_patterns" in fake.last_call["system_prompt"]
+    assert "모든 문단" in fake.last_call["system_prompt"]
+    assert "강제로 넣지 않는다" in fake.last_call["system_prompt"]
