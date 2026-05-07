@@ -3,6 +3,7 @@ from typing import Annotated
 
 import typer
 
+from naver_blog_bot.blog_scraper.service import scrape as scrape_source
 from naver_blog_bot.config import Settings, ensure_local_directories, get_settings
 from naver_blog_bot.meme_library.service import load_meme_index
 from naver_blog_bot.post_generator.drafts import DraftRepository
@@ -25,6 +26,10 @@ def build_generator(settings: Settings) -> PostGenerator:
     )
 
 
+def _is_url_source(source: str) -> bool:
+    return source.startswith("http://") or source.startswith("https://")
+
+
 @app.command("init")
 def init_command() -> None:
     settings = get_settings()
@@ -37,14 +42,20 @@ def init_command() -> None:
 
 @app.command("profile-refresh")
 def profile_refresh_command(
-    sample_files: Annotated[
-        list[Path],
-        typer.Argument(help="One or more local sample post files."),
+    sources: Annotated[
+        list[str],
+        typer.Argument(
+            help="One or more local sample post files and/or HTTP/HTTPS URLs."
+        ),
     ],
     profile: Annotated[
         str,
         typer.Option("--profile", help="Style profile name. Default: 'default'."),
     ] = "default",
+    count: Annotated[
+        int,
+        typer.Option("--count", help="Number of posts to scrape per URL source."),
+    ] = 5,
 ) -> None:
     settings = get_settings()
     ensure_local_directories(settings)
@@ -55,21 +66,44 @@ def profile_refresh_command(
         typer.echo(f"Error: {exc}")
         raise typer.Exit(1)
 
-    if not sample_files:
-        typer.echo("Error: provide at least one sample post file")
+    if not sources:
+        typer.echo("Error: provide at least one sample post file or URL")
         raise typer.Exit(1)
 
-    for path in sample_files:
-        if not path.is_file():
-            typer.echo(f"Error: sample file not found: {path}")
-            raise typer.Exit(1)
+    if count < 1:
+        typer.echo("Error: count must be at least 1")
+        raise typer.Exit(1)
 
-    sample_texts = [path.read_text(encoding="utf-8") for path in sample_files]
+    sample_texts: list[str] = []
+    first_url: str | None = None
+
+    for source in sources:
+        if _is_url_source(source):
+            if first_url is None:
+                first_url = source
+            try:
+                docs = scrape_source(source, count, settings)
+            except ValueError as exc:
+                typer.echo(f"Error: {exc}")
+                raise typer.Exit(1)
+            if not docs:
+                typer.echo(f"Error: no posts found at {source}")
+                raise typer.Exit(1)
+            for doc in docs:
+                sample_texts.append(doc.to_structured_text())
+        else:
+            path = Path(source)
+            if not path.is_file():
+                typer.echo(f"Error: sample file not found: {source}")
+                raise typer.Exit(1)
+            sample_texts.append(path.read_text(encoding="utf-8"))
+
+    blog_url = first_url if first_url is not None else settings.blog_url
 
     try:
         result = refresh_style_profile(
             profile_name=profile,
-            blog_url=settings.blog_url,
+            blog_url=blog_url,
             sample_texts=sample_texts,
             completer=ClaudeTextClient(settings=settings),
         )
@@ -79,7 +113,7 @@ def profile_refresh_command(
 
     save_path = style_profile_path(settings, profile)
     save_style_profile(save_path, result)
-    typer.echo(f"Style profile saved: {save_path} ({len(sample_files)} sample(s) used)")
+    typer.echo(f"Style profile saved: {save_path} ({len(sample_texts)} sample(s) used)")
 
 
 @app.command("draft")

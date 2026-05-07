@@ -3,6 +3,12 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from naver_blog_bot import cli
+from naver_blog_bot.blog_scraper.models import (
+    EmoticonBlock,
+    ImageBlock,
+    PostDocument,
+    TextBlock,
+)
 from naver_blog_bot.post_generator.drafts import DraftRepository
 from naver_blog_bot.post_generator.models import Draft
 from naver_blog_bot.style_profiler.models import StyleProfile
@@ -275,3 +281,174 @@ def test_draft_rejects_invalid_profile_name(monkeypatch, tmp_path: Path) -> None
 
     assert result.exit_code == 1
     assert "Invalid profile name" in result.stdout
+
+
+def _make_fake_document(title: str, text: str) -> PostDocument:
+    return PostDocument(
+        url="https://m.blog.naver.com/user/123",
+        title=title,
+        blocks=[
+            TextBlock(content=text),
+            ImageBlock(alt="사진"),
+            EmoticonBlock(description="기쁨"),
+        ],
+    )
+
+
+class FakeScrapeService:
+    def __init__(self, documents: list[PostDocument]) -> None:
+        self._documents = documents
+        self.calls: list[tuple[str, int, object]] = []
+
+    def __call__(self, url: str, count: int, settings: object) -> list[PostDocument]:
+        self.calls.append((url, count, settings))
+        return self._documents
+
+
+def test_profile_refresh_url_source(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    doc = _make_fake_document("맛집 리뷰", "정말 맛있었어요")
+    fake_scrape = FakeScrapeService([doc])
+    monkeypatch.setattr(cli, "scrape_source", fake_scrape)
+    monkeypatch.setattr(cli, "refresh_style_profile", FakeRefreshService())
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", "--count", "2", "https://m.blog.naver.com/user/123"],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert len(fake_scrape.calls) == 1
+    called_url, called_count, _ = fake_scrape.calls[0]
+    assert called_url == "https://m.blog.naver.com/user/123"
+    assert called_count == 2
+    assert "1 sample(s) used" in result.stdout
+
+    profile_file = tmp_path / "config" / "style_profiles" / "default.json"
+    assert profile_file.exists()
+
+
+def test_profile_refresh_rejects_non_positive_count(
+    monkeypatch, tmp_path: Path
+) -> None:
+    configure_paths(monkeypatch, tmp_path)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", "--count", "0", "https://m.blog.naver.com/user/123"],
+    )
+
+    assert result.exit_code == 1
+    assert "count must be at least 1" in result.stdout
+
+
+def test_profile_refresh_empty_url_result_exits_1(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    fake_scrape = FakeScrapeService([])
+    monkeypatch.setattr(cli, "scrape_source", fake_scrape)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", "https://m.blog.naver.com/user/123"],
+    )
+
+    assert result.exit_code == 1
+    assert "Error: no posts found at https://m.blog.naver.com/user/123" in result.stdout
+
+
+def test_profile_refresh_url_source_structured_text_passed_to_refresh(
+    monkeypatch, tmp_path: Path
+) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    doc = _make_fake_document("제목입니다", "본문 텍스트")
+    fake_scrape = FakeScrapeService([doc])
+    monkeypatch.setattr(cli, "scrape_source", fake_scrape)
+
+    received_sample_texts: list[list[str]] = []
+    received_blog_urls: list[str] = []
+
+    def capturing_refresh(*, profile_name, blog_url, sample_texts, completer):
+        received_sample_texts.append(list(sample_texts))
+        received_blog_urls.append(blog_url)
+        return StyleProfile(profile_name=profile_name, blog_url=blog_url)
+
+    monkeypatch.setattr(cli, "refresh_style_profile", capturing_refresh)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", "https://m.blog.naver.com/user/123"],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert len(received_sample_texts) == 1
+    assert received_blog_urls == ["https://m.blog.naver.com/user/123"]
+    texts = received_sample_texts[0]
+    assert len(texts) == 1
+    structured = texts[0]
+    assert "제목입니다" in structured
+    assert "본문 텍스트" in structured
+    assert "[이미지]" in structured
+    assert "[이모티콘:기쁨]" in structured
+
+
+def test_profile_refresh_mixed_local_and_url(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    local_file = tmp_path / "local.md"
+    local_file.write_text("로컬 샘플 내용", encoding="utf-8")
+
+    doc = _make_fake_document("URL 포스트", "URL 본문")
+    fake_scrape = FakeScrapeService([doc])
+    monkeypatch.setattr(cli, "scrape_source", fake_scrape)
+
+    received_sample_texts: list[list[str]] = []
+
+    def capturing_refresh(*, profile_name, blog_url, sample_texts, completer):
+        received_sample_texts.append(list(sample_texts))
+        return StyleProfile(profile_name=profile_name, blog_url=blog_url)
+
+    monkeypatch.setattr(cli, "refresh_style_profile", capturing_refresh)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", str(local_file), "https://m.blog.naver.com/user/123"],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    texts = received_sample_texts[0]
+    assert len(texts) == 2
+    assert "로컬 샘플 내용" in texts[0]
+    assert "URL 포스트" in texts[1]
+    assert "2 sample(s) used" in result.stdout
+
+
+def test_profile_refresh_scraper_value_error_exits_1(
+    monkeypatch, tmp_path: Path
+) -> None:
+    configure_paths(monkeypatch, tmp_path)
+
+    def failing_scrape(url: str, count: int, settings: object) -> list[PostDocument]:
+        raise ValueError("unsupported URL scheme")
+
+    monkeypatch.setattr(cli, "scrape_source", failing_scrape)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", "https://m.blog.naver.com/user/123"],
+    )
+
+    assert result.exit_code == 1
+    assert "Error: unsupported URL scheme" in result.stdout
+
+
+def test_profile_refresh_missing_local_file_still_errors(
+    monkeypatch, tmp_path: Path
+) -> None:
+    configure_paths(monkeypatch, tmp_path)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", str(tmp_path / "nonexistent.md")],
+    )
+
+    assert result.exit_code == 1
+    assert "sample file not found" in result.stdout
