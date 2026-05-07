@@ -151,6 +151,16 @@ def test_collect_post_urls_from_mobile_post_list() -> None:
     ]
 
 
+def test_collect_post_urls_canonicalizes_relative_post_view_link() -> None:
+    html = "<html><body><a href='/PostView.naver?blogId=myid&logNo=223456791'>글</a></body></html>"
+    urls = collect_post_urls(
+        html,
+        "https://m.blog.naver.com/PostList.naver?blogId=myid&currentPage=1",
+        count=5,
+    )
+    assert urls == ["https://m.blog.naver.com/myid/223456791"]
+
+
 def test_parse_post_html_raises_on_unsupported_structure() -> None:
     html = "<html><body><div>no known containers here</div></body></html>"
     with pytest.raises(ValueError, match="unsupported Naver post structure"):
@@ -169,9 +179,11 @@ def test_is_emoticon_img_attrs_case_insensitive() -> None:
 
 
 def test_collect_blog_post_urls_raises_when_empty() -> None:
+    goto_kwargs: dict[str, object] = {}
+
     class FakePage:
         async def goto(self, url: str, **kwargs: object) -> None:
-            assert kwargs.get("wait_until") == "networkidle"
+            goto_kwargs.update(kwargs)
 
         async def content(self) -> str:
             return "<html><body><a href='/myid/category'>cat</a></body></html>"
@@ -180,18 +192,21 @@ def test_collect_blog_post_urls_raises_when_empty() -> None:
         asyncio.run(
             collect_blog_post_urls(FakePage(), "https://blog.naver.com/myid", count=5)
         )
+    assert goto_kwargs.get("wait_until") == "networkidle"
 
 
 def test_scrape_post_calls_goto_with_networkidle() -> None:
-    goto_kwargs: dict[str, object] = {}
+    goto_calls: list[tuple[str, dict[str, object]]] = []
 
     class FakePage:
         async def goto(self, url: str, **kwargs: object) -> None:
-            goto_kwargs.update(kwargs)
+            goto_calls.append((url, dict(kwargs)))
 
         async def content(self) -> str:
             return NAVER_SMARTEDITOR_HTML
 
     doc = asyncio.run(scrape_post(FakePage(), "https://blog.naver.com/myid/223456789"))
-    assert goto_kwargs.get("wait_until") == "networkidle"
+    assert len(goto_calls) == 1
+    assert goto_calls[0][0] == "https://m.blog.naver.com/myid/223456789"
+    assert goto_calls[0][1].get("wait_until") == "networkidle"
     assert doc.title == "포포몬 첫 사용 후기"

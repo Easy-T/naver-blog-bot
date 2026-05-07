@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 from naver_blog_bot.blog_scraper.adapters.html import (
     HtmlNode,
@@ -171,39 +171,25 @@ _POST_PATH_RE = re.compile(r"^/([^/]+)/(\d+)$")
 
 
 def _resolve_post_url(href: str, base_url: str) -> str | None:
-    parsed_href = urlparse(href)
+    absolute = urljoin(base_url, href)
+    parsed = urlparse(absolute)
 
-    if parsed_href.scheme and parsed_href.hostname == _MOBILE_HOST:
-        path = parsed_href.path.rstrip("/")
+    if parsed.hostname == _PC_HOST:
+        absolute = normalize_naver_url(absolute)
+        parsed = urlparse(absolute)
+
+    if parsed.hostname == _MOBILE_HOST:
+        path = parsed.path.rstrip("/")
         m = _POST_PATH_RE.match(path)
         if m:
-            return href.rstrip("/")
+            return absolute.rstrip("/")
+        if "PostView.naver" in path:
+            qs = parse_qs(parsed.query)
+            blog_id_list = qs.get("blogId", [])
+            log_no_list = qs.get("logNo", [])
+            if blog_id_list and log_no_list:
+                return f"https://{_MOBILE_HOST}/{blog_id_list[0]}/{log_no_list[0]}"
         return None
-
-    if parsed_href.scheme and parsed_href.hostname == _PC_HOST:
-        mobile = normalize_naver_url(href)
-        parsed_mobile = urlparse(mobile)
-        m = _POST_PATH_RE.match(parsed_mobile.path.rstrip("/"))
-        if m:
-            return mobile.rstrip("/")
-        return None
-
-    path = parsed_href.path
-    query = parsed_href.query
-
-    m = _POST_PATH_RE.match(path)
-    if m:
-        blog_id, log_no = m.group(1), m.group(2)
-        return f"https://{_MOBILE_HOST}/{blog_id}/{log_no}"
-
-    if "PostView.naver" in path:
-        qs = parse_qs(query)
-        blog_id_list = qs.get("blogId", [])
-        log_no_list = qs.get("logNo", [])
-        if blog_id_list and log_no_list:
-            blog_id = blog_id_list[0]
-            log_no = log_no_list[0]
-            return f"https://{_MOBILE_HOST}/{blog_id}/{log_no}"
 
     return None
 

@@ -32,7 +32,6 @@ class HtmlNode:
         return "".join(parts)
 
 
-# Tags whose content should not be recursed into for text purposes.
 _VOID_TAGS = frozenset(
     {
         "area",
