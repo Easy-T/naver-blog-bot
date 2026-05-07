@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 from naver_blog_bot import cli
 from naver_blog_bot.post_generator.drafts import DraftRepository
 from naver_blog_bot.post_generator.models import Draft
+from naver_blog_bot.style_profiler.models import StyleProfile
 
 runner = CliRunner()
 
@@ -117,9 +118,6 @@ def test_publish_command_is_blocked_in_foundation_slice(
 
     assert result.exit_code == 1
     assert "publish is outside this foundation slice" in result.stdout
-
-
-from naver_blog_bot.style_profiler.models import StyleProfile
 
 
 class FakeRefreshService:
