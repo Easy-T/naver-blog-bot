@@ -53,7 +53,11 @@ def test_draft_saves_generated_draft(monkeypatch, tmp_path: Path) -> None:
 
     from naver_blog_bot.config import Settings, ensure_local_directories
     from naver_blog_bot.style_profiler.models import StyleProfile
-    from naver_blog_bot.style_profiler.service import save_style_profile, style_profile_path
+    from naver_blog_bot.style_profiler.service import (
+        save_style_profile,
+        style_profile_path,
+    )
+
     settings = Settings()
     ensure_local_directories(settings)
     save_style_profile(
@@ -143,29 +147,39 @@ def test_profile_refresh_writes_named_profile(monkeypatch, tmp_path: Path) -> No
     assert profile_file.exists()
 
 
-def test_profile_refresh_with_explicit_profile_name(monkeypatch, tmp_path: Path) -> None:
+def test_profile_refresh_with_explicit_profile_name(
+    monkeypatch, tmp_path: Path
+) -> None:
     configure_paths(monkeypatch, tmp_path)
     sample = tmp_path / "post.md"
     sample.write_text("샘플", encoding="utf-8")
     monkeypatch.setattr(cli, "refresh_style_profile", FakeRefreshService())
 
-    result = runner.invoke(cli.app, ["profile-refresh", "--profile", "food-review", str(sample)])
+    result = runner.invoke(
+        cli.app, ["profile-refresh", "--profile", "food-review", str(sample)]
+    )
 
     assert result.exit_code == 0
     assert "food-review.json" in result.stdout
     assert (tmp_path / "config" / "style_profiles" / "food-review.json").exists()
 
 
-def test_profile_refresh_rejects_invalid_profile_name(monkeypatch, tmp_path: Path) -> None:
+def test_profile_refresh_rejects_invalid_profile_name(
+    monkeypatch, tmp_path: Path
+) -> None:
     configure_paths(monkeypatch, tmp_path)
 
-    result = runner.invoke(cli.app, ["profile-refresh", "--profile", "Invalid Name", "any.md"])
+    result = runner.invoke(
+        cli.app, ["profile-refresh", "--profile", "Invalid Name", "any.md"]
+    )
 
     assert result.exit_code == 1
     assert "Invalid profile name" in result.stdout
 
 
-def test_profile_refresh_rejects_missing_sample_file(monkeypatch, tmp_path: Path) -> None:
+def test_profile_refresh_rejects_missing_sample_file(
+    monkeypatch, tmp_path: Path
+) -> None:
     configure_paths(monkeypatch, tmp_path)
 
     result = runner.invoke(cli.app, ["profile-refresh", str(tmp_path / "missing.md")])
@@ -190,7 +204,11 @@ def test_draft_uses_default_profile_when_omitted(monkeypatch, tmp_path: Path) ->
 
     from naver_blog_bot.config import Settings, ensure_local_directories
     from naver_blog_bot.style_profiler.models import StyleProfile
-    from naver_blog_bot.style_profiler.service import save_style_profile, style_profile_path
+    from naver_blog_bot.style_profiler.service import (
+        save_style_profile,
+        style_profile_path,
+    )
+
     settings = Settings()
     ensure_local_directories(settings)
     save_style_profile(
@@ -212,7 +230,11 @@ def test_draft_loads_explicit_named_profile(monkeypatch, tmp_path: Path) -> None
 
     from naver_blog_bot.config import Settings, ensure_local_directories
     from naver_blog_bot.style_profiler.models import StyleProfile
-    from naver_blog_bot.style_profiler.service import save_style_profile, style_profile_path
+    from naver_blog_bot.style_profiler.service import (
+        save_style_profile,
+        style_profile_path,
+    )
+
     settings = Settings()
     ensure_local_directories(settings)
     save_style_profile(
@@ -220,7 +242,9 @@ def test_draft_loads_explicit_named_profile(monkeypatch, tmp_path: Path) -> None
         StyleProfile(blog_url=settings.blog_url, profile_name="food-review"),
     )
 
-    result = runner.invoke(cli.app, ["draft", "--profile", "food-review", str(photo), "메모"])
+    result = runner.invoke(
+        cli.app, ["draft", "--profile", "food-review", str(photo), "메모"]
+    )
 
     assert result.exit_code == 0
     assert "Draft saved" in result.stdout
@@ -232,7 +256,9 @@ def test_draft_exits_when_named_profile_missing(monkeypatch, tmp_path: Path) -> 
     photo.write_bytes(b"fake image bytes")
     monkeypatch.setattr(cli, "build_generator", lambda settings: FakeGenerator())
 
-    result = runner.invoke(cli.app, ["draft", "--profile", "food-review", str(photo), "메모"])
+    result = runner.invoke(
+        cli.app, ["draft", "--profile", "food-review", str(photo), "메모"]
+    )
 
     assert result.exit_code == 1
     assert "profile-refresh --profile food-review" in result.stdout
@@ -243,7 +269,9 @@ def test_draft_rejects_invalid_profile_name(monkeypatch, tmp_path: Path) -> None
     photo = tmp_path / "photo.jpg"
     photo.write_bytes(b"fake image bytes")
 
-    result = runner.invoke(cli.app, ["draft", "--profile", "Invalid!", str(photo), "메모"])
+    result = runner.invoke(
+        cli.app, ["draft", "--profile", "Invalid!", str(photo), "메모"]
+    )
 
     assert result.exit_code == 1
     assert "Invalid profile name" in result.stdout

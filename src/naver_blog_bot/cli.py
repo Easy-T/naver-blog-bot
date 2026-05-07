@@ -79,9 +79,7 @@ def profile_refresh_command(
 
     save_path = style_profile_path(settings, profile)
     save_style_profile(save_path, result)
-    typer.echo(
-        f"Style profile saved: {save_path} ({len(sample_files)} sample(s) used)"
-    )
+    typer.echo(f"Style profile saved: {save_path} ({len(sample_files)} sample(s) used)")
 
 
 @app.command("draft")

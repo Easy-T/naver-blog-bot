@@ -91,13 +91,29 @@ def test_style_profile_explicit_profile_name() -> None:
 
 
 def test_validate_profile_name_accepts_valid_names() -> None:
-    for name in ("default", "food-review", "product_review", "travel2026", "a", "z" * 64):
+    for name in (
+        "default",
+        "food-review",
+        "product_review",
+        "travel2026",
+        "a",
+        "z" * 64,
+    ):
         validate_profile_name(name)  # must not raise
 
 
 def test_validate_profile_name_rejects_invalid_names() -> None:
     import pytest
-    for name in ("", "Food Review", "맛집", "../secret", ".env", "food/review", "a" * 65):
+
+    for name in (
+        "",
+        "Food Review",
+        "맛집",
+        "../secret",
+        ".env",
+        "food/review",
+        "a" * 65,
+    ):
         with pytest.raises(ValueError):
             validate_profile_name(name)
 
@@ -110,6 +126,7 @@ def test_style_profile_path_builds_correct_path(monkeypatch, tmp_path: Path) -> 
         "NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "browser-profile")
     )
     from naver_blog_bot.config import Settings
+
     settings = Settings()
     path = style_profile_path(settings, "food-review")
     assert path == tmp_path / "config" / "style_profiles" / "food-review.json"
@@ -117,6 +134,7 @@ def test_style_profile_path_builds_correct_path(monkeypatch, tmp_path: Path) -> 
 
 def test_style_profile_path_rejects_invalid_name(monkeypatch, tmp_path: Path) -> None:
     import pytest
+
     monkeypatch.setenv("NAVER_BOT_CONFIG_DIR", str(tmp_path / "config"))
     monkeypatch.setenv("NAVER_BOT_DRAFTS_DIR", str(tmp_path / "drafts"))
     monkeypatch.setenv("NAVER_BOT_MEMES_DIR", str(tmp_path / "assets" / "memes"))
@@ -124,6 +142,7 @@ def test_style_profile_path_rejects_invalid_name(monkeypatch, tmp_path: Path) ->
         "NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "browser-profile")
     )
     from naver_blog_bot.config import Settings
+
     settings = Settings()
     with pytest.raises(ValueError):
         style_profile_path(settings, "../secret")

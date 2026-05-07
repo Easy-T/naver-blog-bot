@@ -20,13 +20,15 @@ class FakeCompleter:
         return self._response
 
 
-VALID_RESPONSE = json.dumps({
-    "structure_patterns": ["도입부에 개인 경험을 먼저 쓴다"],
-    "tone_keywords": ["다정함", "솔직함"],
-    "frequent_expressions": ["완전 만족"],
-    "review_conventions": ["첫인상 후 사용 경험 순"],
-    "photo_usage_notes": ["사진 아래 짧은 감탄사"],
-})
+VALID_RESPONSE = json.dumps(
+    {
+        "structure_patterns": ["도입부에 개인 경험을 먼저 쓴다"],
+        "tone_keywords": ["다정함", "솔직함"],
+        "frequent_expressions": ["완전 만족"],
+        "review_conventions": ["첫인상 후 사용 경험 순"],
+        "photo_usage_notes": ["사진 아래 짧은 감탄사"],
+    }
+)
 
 
 def test_refresh_returns_style_profile_with_profile_name() -> None:
