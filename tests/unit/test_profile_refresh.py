@@ -9,6 +9,7 @@ from naver_blog_bot.style_profiler.refresh import refresh_style_profile
 class FakeCompleter:
     def __init__(self, response: str) -> None:
         self._response = response
+        self.last_system_prompt: str = ""
 
     def complete_text(
         self,
@@ -17,6 +18,7 @@ class FakeCompleter:
         user_prompt: str,
         cacheable_context: Sequence[str] = (),
     ) -> str:
+        self.last_system_prompt = system_prompt
         return self._response
 
 
@@ -27,6 +29,7 @@ VALID_RESPONSE = json.dumps(
         "frequent_expressions": ["완전 만족"],
         "review_conventions": ["첫인상 후 사용 경험 순"],
         "photo_usage_notes": ["사진 아래 짧은 감탄사"],
+        "emoticon_usage_patterns": ["단락 끝마다 이모티콘 1개"],
     }
 )
 
@@ -57,6 +60,19 @@ def test_refresh_sets_all_fields() -> None:
     assert profile.frequent_expressions == ["완전 만족"]
     assert profile.review_conventions == ["첫인상 후 사용 경험 순"]
     assert profile.photo_usage_notes == ["사진 아래 짧은 감탄사"]
+    assert profile.emoticon_usage_patterns == ["단락 끝마다 이모티콘 1개"]
+
+
+def test_system_prompt_requests_emoticon_usage_patterns() -> None:
+    completer = FakeCompleter(VALID_RESPONSE)
+    refresh_style_profile(
+        profile_name="default",
+        blog_url="https://blog.naver.com/test",
+        sample_texts=["[이모티콘:기쁨] 맛있었어요"],
+        completer=completer,
+    )
+    assert "emoticon_usage_patterns" in completer.last_system_prompt
+    assert "[이모티콘" in completer.last_system_prompt
 
 
 def test_refresh_raises_on_invalid_json() -> None:

@@ -20,6 +20,7 @@ def test_missing_style_profile_returns_empty_profile(tmp_path: Path) -> None:
     assert profile.blog_url == "https://blog.naver.com/flowerbend"
     assert profile.structure_patterns == []
     assert profile.tone_keywords == []
+    assert profile.emoticon_usage_patterns == []
 
 
 def test_style_profile_round_trip(tmp_path: Path) -> None:
@@ -31,13 +32,16 @@ def test_style_profile_round_trip(tmp_path: Path) -> None:
         frequent_expressions=["완전 만족"],
         review_conventions=["첫인상 다음에 사용 경험을 설명"],
         photo_usage_notes=["사진 사이에 짧은 감탄사를 넣음"],
+        emoticon_usage_patterns=["단락 끝마다 이모티콘 1개"],
     )
     path = tmp_path / "style_profile.json"
 
     save_style_profile(path, profile)
 
-    assert load_style_profile(path, profile.blog_url) == profile
+    loaded = load_style_profile(path, profile.blog_url)
+    assert loaded == profile
     assert "완전 만족" in profile.to_cache_text()
+    assert "단락 끝마다 이모티콘 1개" in profile.to_cache_text()
 
 
 def test_missing_meme_index_returns_empty_index(tmp_path: Path) -> None:
