@@ -161,6 +161,16 @@ def test_collect_post_urls_canonicalizes_relative_post_view_link() -> None:
     assert urls == ["https://m.blog.naver.com/myid/223456791"]
 
 
+def test_collect_post_urls_canonicalizes_pc_absolute_link() -> None:
+    html = "<html><body><a href='https://blog.naver.com/myid/223456792'>글</a></body></html>"
+    urls = collect_post_urls(
+        html,
+        "https://m.blog.naver.com/PostList.naver?blogId=myid&currentPage=1",
+        count=5,
+    )
+    assert urls == ["https://m.blog.naver.com/myid/223456792"]
+
+
 def test_parse_post_html_raises_on_unsupported_structure() -> None:
     html = "<html><body><div>no known containers here</div></body></html>"
     with pytest.raises(ValueError, match="unsupported Naver post structure"):
