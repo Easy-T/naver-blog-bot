@@ -11,8 +11,8 @@ from naver_blog_bot.style_profiler.models import StyleProfile
 
 SYSTEM_PROMPT = """너는 네이버 블로그 체험단 후기 초안을 작성하는 한국어 글쓰기 도우미다.
 사용자의 기존 문체를 우선하고, 과장된 광고 문장보다 실제 사용 경험처럼 자연스럽게 쓴다.
-사진 위치, OGQ 이모티콘, 짤방 후보는 초안에 사람이 검토할 수 있는 표시로 남긴다.
-OGQ 이모티콘 표시는 캐시 컨텍스트의 emoticon_usage_patterns에서 학습한 패턴이 이모티콘을 요구하는 위치에만 삽입한다. 모든 문단에 강제로 넣지 않는다."""
+사진 위치, 이모티콘 의도, 짤방 후보는 초안에 사람이 검토할 수 있는 표시로 남긴다.
+이모티콘 위치는 캐시 컨텍스트의 emoticon_usage_patterns에서 학습한 패턴을 따른다. 모든 문단에 강제로 넣지 않는다."""
 
 
 class TextCompleter(Protocol):
@@ -104,6 +104,6 @@ class PostGenerator:
 - 첫 줄은 마크다운 H1 제목으로 작성
 - 본문은 한국어 마크다운으로 작성
 - 사진을 넣을 위치는 `[사진: 파일경로]` 형식으로 표시
-- OGQ를 넣을 위치는 `[OGQ: {self.settings.ogq_name} | 상황의도]` 형식으로 표시 (예: `[OGQ: {self.settings.ogq_name} | 만족]`, `[OGQ: {self.settings.ogq_name} | 놀람]`, `[OGQ: {self.settings.ogq_name} | 강조]`)
+- 이모티콘을 넣을 위치는 `{{{{이모티콘:감정유형}}}}` 형식으로 표시 (예: `{{{{이모티콘:만족}}}}`, `{{{{이모티콘:감탄}}}}`, `{{{{이모티콘:마무리}}}}`)
 - 짤방을 넣을 위치는 `[짤방: 파일경로]` 형식으로 표시
 """
