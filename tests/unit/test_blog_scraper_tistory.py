@@ -12,6 +12,17 @@ from naver_blog_bot.blog_scraper.adapters.tistory import (
 from naver_blog_bot.blog_scraper.models import EmoticonBlock, ImageBlock, TextBlock
 
 
+NESTED_BLOCK_HTML = """
+<html>
+<head><title>중첩 블록</title></head>
+<body>
+  <article class="entry-content">
+    <div><p>첫 문단</p><img alt="사진"><p>둘째 문단</p></div>
+  </article>
+</body>
+</html>
+"""
+
 ENTRY_CONTENT_HTML = """
 <html>
 <head><title>맛집 방문기</title></head>
@@ -138,7 +149,7 @@ def test_collect_post_urls_honors_count() -> None:
         count=2,
     )
 
-    assert len(urls) <= 2
+    assert len(urls) == 2
 
 
 def test_scrape_post_uses_networkidle() -> None:
@@ -173,3 +184,12 @@ def test_collect_blog_post_urls_raises_when_empty() -> None:
             collect_blog_post_urls(FakePage(), "https://myblog.tistory.com", count=5)
         )
     assert goto_kwargs.get("wait_until") == "networkidle"
+
+
+def test_parse_nested_block_preserves_order() -> None:
+    doc = parse_post_html(NESTED_BLOCK_HTML, "https://myblog.tistory.com/5")
+
+    assert [type(b) for b in doc.blocks] == [TextBlock, ImageBlock, TextBlock]
+    assert doc.blocks[0].content == "첫 문단"
+    assert doc.blocks[1].alt == "사진"
+    assert doc.blocks[2].content == "둘째 문단"

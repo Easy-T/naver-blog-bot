@@ -40,15 +40,21 @@ def _walk_content(node: HtmlNode, blocks: list[PostBlock], seen_imgs: set[int]) 
                 seen_imgs.add(node_id)
                 blocks.append(ImageBlock(alt=child.attrs.get("alt", "")))
         elif child.tag in _BLOCK_ELEMENTS:
-            nested_imgs = select_all(child, "img")
-            text = normalize_text(child.text_content())
-            if text:
-                blocks.append(TextBlock(content=text))
-            for img in nested_imgs:
-                node_id = id(img)
-                if node_id not in seen_imgs:
-                    seen_imgs.add(node_id)
-                    blocks.append(ImageBlock(alt=img.attrs.get("alt", "")))
+            has_block_child = any(
+                isinstance(c, HtmlNode) and c.tag in _BLOCK_ELEMENTS
+                for c in child.children
+            )
+            if has_block_child:
+                _walk_content(child, blocks, seen_imgs)
+            else:
+                text = normalize_text(child.text_content())
+                if text:
+                    blocks.append(TextBlock(content=text))
+                for img in select_all(child, "img"):
+                    node_id = id(img)
+                    if node_id not in seen_imgs:
+                        seen_imgs.add(node_id)
+                        blocks.append(ImageBlock(alt=img.attrs.get("alt", "")))
         else:
             _walk_content(child, blocks, seen_imgs)
 
