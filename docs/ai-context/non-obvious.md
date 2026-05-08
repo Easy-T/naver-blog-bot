@@ -19,7 +19,7 @@
 - 트리거: Claude Code Bash 도구 또는 WSL 셸에서 HTTPS 원격으로 push 실행
 - Root cause: WSL 2 샌드박스에서 Windows Git Credential Manager(GCM) IPC 소켓이 네트워크 중단 후 응답 없이 블로킹됨. Git의 credential helper 호출에 타임아웃이 없고, 프로젝트 설정에 WSL용 credential helper 우회 경로가 명시되지 않음.
 - Action: `docs/ai-context/runbook.md`에 "WSL에서 push 시 `/mnt/c/Program\ Files/Git/bin/git.exe -c safe.directory=<repo> push` 사용" 항목 추가. `doctor.sh`에 WSL Git의 credential.helper 경로가 Windows GCM 바이너리인지 검사하고 경고하는 fitness check 추가 (스프린트 내 완료).
-- 재발 카운터: 1
+- 재발 카운터: 2
 
 ## 2026-05-02: WSL working directory에서 ~/.claude 경로 추론 오류
 - 증상: Claude Code가 WSL UNC 경로를 working directory로 표시할 때 `~/.claude`를 `/home/<wsl-user>/.claude`로 잘못 매핑
@@ -37,4 +37,4 @@
 (없음 — active ≥30 또는 줄 수 ≥100 시 가장 오래된 비재발 항목 5개 자동 이동)
 
 ---
-Last updated: 2026-05-03
+Last updated: 2026-05-06
