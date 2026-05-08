@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from naver_blog_bot.blog_scraper.adapters.generic import (
+    collect_blog_post_urls,
     parse_post_html,
     scrape_post,
 )
@@ -114,6 +115,13 @@ def test_scrape_post_uses_networkidle() -> None:
     assert goto_calls[0][0] == "https://example.com/post/1"
     assert goto_calls[0][1].get("wait_until") == "networkidle"
     assert doc.title == "리뷰 글"
+
+
+def test_collect_blog_post_urls_returns_input_url() -> None:
+    result = asyncio.run(
+        collect_blog_post_urls(None, "https://example.com/blog", count=5)
+    )
+    assert result == ["https://example.com/blog"]
 
 
 def test_parse_nested_block_preserves_order() -> None:

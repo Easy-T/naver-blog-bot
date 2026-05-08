@@ -78,3 +78,8 @@ async def scrape_post(page: object, url: str) -> PostDocument:
     await page.goto(url, wait_until="networkidle")  # type: ignore[attr-defined]
     html: str = await page.content()  # type: ignore[attr-defined]
     return parse_post_html(html, url)
+
+
+async def collect_blog_post_urls(page: object, url: str, count: int) -> list[str]:
+    # Generic sites have no known listing structure; treat the URL itself as the only post.
+    return [url]
