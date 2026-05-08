@@ -54,6 +54,7 @@ def test_ensure_local_directories_creates_expected_paths(tmp_path: Path) -> None
 def test_settings_has_style_profiles_dir(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("NAVER_BOT_CONFIG_DIR", str(tmp_path / "config"))
     from naver_blog_bot.config import Settings
+
     settings = Settings()
     assert settings.style_profiles_dir == tmp_path / "config" / "style_profiles"
 
@@ -68,6 +69,7 @@ def test_ensure_local_directories_creates_style_profiles_dir(
         "NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "browser-profile")
     )
     from naver_blog_bot.config import Settings, ensure_local_directories
+
     settings = Settings()
     ensure_local_directories(settings)
     assert (tmp_path / "config" / "style_profiles").is_dir()

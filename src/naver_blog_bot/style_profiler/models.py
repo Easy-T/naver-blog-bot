@@ -13,6 +13,7 @@ class StyleProfile(BaseModel):
     frequent_expressions: list[str] = Field(default_factory=list)
     review_conventions: list[str] = Field(default_factory=list)
     photo_usage_notes: list[str] = Field(default_factory=list)
+    emoticon_usage_patterns: list[str] = Field(default_factory=list)
 
     def to_cache_text(self) -> str:
         return json.dumps(
