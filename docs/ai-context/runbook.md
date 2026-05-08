@@ -116,6 +116,17 @@ uv run naver-bot draft path/to/photo1.jpg path/to/photo2.jpg "제품 첫인상�
 uv run naver-bot preview draft-20260503-120000
 ```
 
+### Check Claude backend
+
+```bash
+claude
+```
+
+If `naver-bot draft` reports a Claude Code CLI error:
+- Run `claude` once and confirm it is installed and logged in.
+- Force Claude Code mode with `NAVER_BOT_CLAUDE_BACKEND=claude-code` when testing local login behavior.
+- Force SDK mode with `NAVER_BOT_CLAUDE_BACKEND=anthropic-sdk` and set `ANTHROPIC_API_KEY` when using API-key automation.
+
 ## Health Checks / Dashboards
 (아직 정의되지 않음)
 

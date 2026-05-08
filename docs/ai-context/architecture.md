@@ -35,7 +35,7 @@ graph TD
 3. `style_profiler.service` loads `config/style_profiles/<profile-name>.json` or returns an empty `StyleProfile` when the file is missing.
 4. `meme_library.service` loads `config/meme_index.json` or returns an empty `MemeIndex`.
 5. `post_generator.generator.PostGenerator` builds a prompt from memo, photo paths, style profile, meme index, and OGQ settings.
-6. `shared.claude_client.ClaudeTextClient` calls the Anthropic SDK with cacheable style/meme context blocks.
+6. `shared.claude_client.build_text_completer()` selects a Claude backend. `claude-code` runs the local Claude Code CLI, while `anthropic-sdk` calls the Anthropic SDK with cacheable style/meme context blocks.
 7. `post_generator.drafts.DraftRepository` writes the resulting draft to `drafts/<draft_id>.json`.
 8. User runs `naver-bot preview <draft_id>` to inspect the local draft before any publishing cycle exists.
 
@@ -82,6 +82,15 @@ graph TD
 - 이유: Style learning needs the relative placement and frequency of text, images, and emoticons, not just copied text. Reusing `Settings.browser_profile_dir` also allows Naver pages that depend on the user's local browser session while still supporting public posts.
 - 대안: Keep `profile-refresh` local-file-only; fetch pages with a simple HTTP client; store raw HTML as style samples.
 - 트레이드오프: Playwright adds runtime dependency and browser setup cost, but it gives a shared path for dynamic blog pages and future session-aware scraping.
+
+### ADR-004: Claude calls support selectable local backends
+
+- 날짜: 2026-05-09
+- 상태: Accepted
+- 결정: Claude text completion is selected through `build_text_completer()`, with `auto`, `claude-code`, and `anthropic-sdk` backends. The default `auto` mode prefers the installed Claude Code CLI and falls back to the existing Anthropic SDK path when the CLI command is unavailable.
+- 이유: The tool is local-first and the target user already runs Claude Code locally, so requiring a separate API key is unnecessary friction for the common path.
+- 대안: Remove SDK support entirely; keep API-key-only generation; export prompts for manual copy/paste into Claude Code.
+- 트레이드오프: Claude Code backend cannot use SDK prompt-cache block semantics and depends on local CLI availability/login state, but it removes API key setup for local users while keeping SDK fallback for automation.
 
 <!-- ADR 형식:
 ### ADR-001: <제목>

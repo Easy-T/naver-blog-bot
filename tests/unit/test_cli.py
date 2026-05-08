@@ -89,6 +89,38 @@ def test_draft_requires_photo_and_memo(monkeypatch, tmp_path: Path) -> None:
     assert "provide at least one photo path and a memo" in result.stdout
 
 
+def test_draft_reports_claude_backend_errors(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake image bytes")
+
+    from naver_blog_bot.config import Settings, ensure_local_directories
+    from naver_blog_bot.shared.claude_client import ClaudeBackendError
+    from naver_blog_bot.style_profiler.models import StyleProfile
+    from naver_blog_bot.style_profiler.service import (
+        save_style_profile,
+        style_profile_path,
+    )
+
+    settings = Settings()
+    ensure_local_directories(settings)
+    save_style_profile(
+        style_profile_path(settings, "default"),
+        StyleProfile(blog_url=settings.blog_url),
+    )
+
+    class BrokenGenerator:
+        def generate(self, **kwargs):
+            raise ClaudeBackendError("Claude Code CLI failed. Run `claude` once.")
+
+    monkeypatch.setattr(cli, "build_generator", lambda settings: BrokenGenerator())
+
+    result = runner.invoke(cli.app, ["draft", str(photo), "메모"])
+
+    assert result.exit_code == 1
+    assert "Claude Code CLI failed" in result.stdout
+
+
 def test_draft_rejects_missing_photo(monkeypatch, tmp_path: Path) -> None:
     configure_paths(monkeypatch, tmp_path)
 
@@ -151,6 +183,26 @@ def test_profile_refresh_writes_named_profile(monkeypatch, tmp_path: Path) -> No
     assert "default.json" in result.stdout
     profile_file = tmp_path / "config" / "style_profiles" / "default.json"
     assert profile_file.exists()
+
+
+def test_profile_refresh_reports_claude_backend_errors(
+    monkeypatch, tmp_path: Path
+) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    sample = tmp_path / "sample.txt"
+    sample.write_text("샘플 본문", encoding="utf-8")
+
+    from naver_blog_bot.shared.claude_client import ClaudeBackendError
+
+    def broken_refresh(**kwargs):
+        raise ClaudeBackendError("Claude Code CLI failed. Run `claude` once.")
+
+    monkeypatch.setattr(cli, "refresh_style_profile", broken_refresh)
+
+    result = runner.invoke(cli.app, ["profile-refresh", str(sample)])
+
+    assert result.exit_code == 1
+    assert "Claude Code CLI failed" in result.stdout
 
 
 def test_profile_refresh_with_explicit_profile_name(

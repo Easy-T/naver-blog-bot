@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
     )
     claude_model: str = "claude-opus-4-7"
     claude_max_tokens: int = 4000
+    claude_backend: Literal["auto", "claude-code", "anthropic-sdk"] = "auto"
+    claude_command: str = "claude"
+    claude_cli_timeout_seconds: int = 300
 
     @property
     def style_profiles_dir(self) -> Path:

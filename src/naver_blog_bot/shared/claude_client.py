@@ -1,9 +1,16 @@
+import json
+import shutil
+import subprocess
 from collections.abc import Sequence
 from typing import Any
 
 from anthropic import Anthropic
 
 from naver_blog_bot.config import Settings
+
+
+class ClaudeBackendError(RuntimeError):
+    pass
 
 
 class ClaudeTextClient:
@@ -43,3 +50,101 @@ class ClaudeTextClient:
             elif getattr(block, "type", None) == "text":
                 parts.append(str(block.text))
         return "".join(parts).strip()
+
+
+class ClaudeCodeTextClient:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    def complete_text(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        cacheable_context: Sequence[str] = (),
+    ) -> str:
+        prompt = self._build_prompt(
+            system_prompt=system_prompt,
+            cacheable_context=cacheable_context,
+            user_prompt=user_prompt,
+        )
+        args = [
+            self.settings.claude_command,
+            "-p",
+            "--output-format",
+            "json",
+            "--model",
+            self.settings.claude_model,
+        ]
+        try:
+            result = subprocess.run(
+                args,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.settings.claude_cli_timeout_seconds,
+            )
+        except FileNotFoundError as exc:
+            raise ClaudeBackendError(
+                "Claude Code CLI not found. Install Claude Code or set "
+                "NAVER_BOT_CLAUDE_BACKEND=anthropic-sdk with ANTHROPIC_API_KEY."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise ClaudeBackendError(
+                f"Claude Code CLI timed out after "
+                f"{self.settings.claude_cli_timeout_seconds} seconds."
+            ) from exc
+
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "no output"
+            raise ClaudeBackendError(
+                "Claude Code CLI failed. Run `claude` once to confirm login, "
+                "or set NAVER_BOT_CLAUDE_BACKEND=anthropic-sdk with "
+                f"ANTHROPIC_API_KEY. Detail: {detail}"
+            )
+
+        return self._parse_output(result.stdout)
+
+    def _build_prompt(
+        self,
+        *,
+        system_prompt: str,
+        cacheable_context: Sequence[str],
+        user_prompt: str,
+    ) -> str:
+        parts = [
+            "# System instructions",
+            system_prompt,
+        ]
+        for index, context in enumerate(cacheable_context, start=1):
+            parts.extend([f"# Context {index}", context])
+        parts.extend(["# User request", user_prompt])
+        return "\n\n".join(parts)
+
+    def _parse_output(self, stdout: str) -> str:
+        try:
+            payload = json.loads(stdout)
+        except json.JSONDecodeError as exc:
+            raise ClaudeBackendError(
+                "Claude Code CLI returned non-JSON output despite --output-format json."
+            ) from exc
+
+        if isinstance(payload, dict) and isinstance(payload.get("result"), str):
+            return payload["result"].strip()
+
+        raise ClaudeBackendError(
+            "Claude Code CLI JSON output did not include result text."
+        )
+
+
+def build_text_completer(
+    settings: Settings, anthropic_client: Any | None = None
+) -> ClaudeTextClient | ClaudeCodeTextClient:
+    if settings.claude_backend == "claude-code":
+        return ClaudeCodeTextClient(settings=settings)
+    if settings.claude_backend == "anthropic-sdk":
+        return ClaudeTextClient(settings=settings, anthropic_client=anthropic_client)
+    if shutil.which(settings.claude_command):
+        return ClaudeCodeTextClient(settings=settings)
+    return ClaudeTextClient(settings=settings, anthropic_client=anthropic_client)

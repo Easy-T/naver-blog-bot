@@ -43,7 +43,8 @@
 |------|------|
 | Python 3.11 이상 | [python.org](https://www.python.org/downloads/) |
 | uv | Python 패키지 관리 도구 (`pip install uv`) |
-| Anthropic API 키 | [console.anthropic.com](https://console.anthropic.com)에서 발급 |
+| Claude Code CLI 로그인 | API 키 없이 초안을 생성하려면 필요 |
+| Anthropic API 키 (선택) | SDK 백엔드를 강제로 사용할 때만 필요 |
 | 네이버 블로그 (선택) | 문체 학습용. 없으면 로컬 샘플 파일로 대체 가능 |
 
 ---
@@ -66,6 +67,16 @@ uv run playwright install chromium
 
 ## 처음 설정
 
+### 0단계 — Claude Code 로그인 확인
+
+API 키 없이 쓰려면 PC에 Claude Code CLI가 설치되어 있고 로그인되어 있어야 합니다.
+
+```bash
+claude
+```
+
+위 명령으로 Claude Code가 정상 실행되는지 확인하세요. `naver-bot`은 내부적으로 `claude -p --output-format json`을 호출합니다.
+
 ### 1단계 — .env 파일 만들기
 
 프로젝트 루트에 `.env` 파일을 만들고 아래 내용을 채웁니다.
@@ -73,8 +84,17 @@ uv run playwright install chromium
 ```bash
 # .env
 
-# 필수: Anthropic API 키
-ANTHROPIC_API_KEY=sk-ant-...
+# 기본값: auto
+# - auto: Claude Code CLI가 있으면 사용, 없으면 Anthropic SDK 사용
+# - claude-code: Claude Code CLI만 사용
+# - anthropic-sdk: Anthropic SDK만 사용
+NAVER_BOT_CLAUDE_BACKEND=auto
+
+# Claude Code CLI 명령 이름. 보통 변경하지 않아도 됩니다.
+NAVER_BOT_CLAUDE_COMMAND=claude
+
+# Anthropic SDK 백엔드를 강제로 쓸 때만 필요합니다.
+# ANTHROPIC_API_KEY=sk-ant-...
 
 # 내 블로그 주소 (profile-refresh의 기본 blog_url로 사용됨)
 NAVER_BOT_BLOG_URL=https://blog.naver.com/내아이디
@@ -83,9 +103,6 @@ NAVER_BOT_BLOG_URL=https://blog.naver.com/내아이디
 NAVER_BOT_OGQ_ARTWORK_ID=644e042a7d7f8
 NAVER_BOT_OGQ_NAME=세루리안
 ```
-
-> **API 키는 어디서?**
-> [console.anthropic.com](https://console.anthropic.com) → API Keys → Create Key
 
 ### 2단계 — 로컬 디렉터리 초기화
 
@@ -243,7 +260,7 @@ Photos:
 처음 한 번
 ──────────
 1. uv sync                                    # 설치
-2. .env 파일 작성                             # API 키 설정
+2. .env 파일 작성                             # Claude 백엔드 설정
 3. naver-bot init                             # 폴더 초기화
 4. naver-bot profile-refresh <블로그URL>      # 문체 학습
 
@@ -275,7 +292,10 @@ assets/memes/        ← 짤방 이미지 파일을 여기에 넣으세요
 
 | 환경변수 | 기본값 | 설명 |
 |---------|-------|------|
-| `ANTHROPIC_API_KEY` | (필수) | Anthropic API 키 |
+| `ANTHROPIC_API_KEY` | (선택) | Anthropic SDK 백엔드를 강제로 사용할 때 필요한 API 키 |
+| `NAVER_BOT_CLAUDE_BACKEND` | `auto` | Claude 호출 방식 (`auto`, `claude-code`, `anthropic-sdk`) |
+| `NAVER_BOT_CLAUDE_COMMAND` | `claude` | Claude Code CLI 실행 명령 |
+| `NAVER_BOT_CLAUDE_CLI_TIMEOUT_SECONDS` | `300` | Claude Code CLI 응답 대기 시간(초) |
 | `NAVER_BOT_BLOG_URL` | `https://blog.naver.com/flowerbend` | 내 블로그 URL (profile-refresh 기본 blog_url) |
 | `NAVER_BOT_OGQ_ARTWORK_ID` | `644e042a7d7f8` | OGQ 이모티콘 세트 ID |
 | `NAVER_BOT_OGQ_NAME` | `세루리안` | OGQ 이모티콘 세트 이름 |

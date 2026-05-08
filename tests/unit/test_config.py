@@ -30,6 +30,26 @@ def test_settings_accept_environment_path_overrides(
     assert settings.drafts_dir == drafts_dir
 
 
+def test_settings_defaults_to_auto_claude_backend() -> None:
+    settings = Settings()
+
+    assert settings.claude_backend == "auto"
+    assert settings.claude_command == "claude"
+    assert settings.claude_cli_timeout_seconds == 300
+
+
+def test_settings_accepts_claude_backend_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("NAVER_BOT_CLAUDE_BACKEND", "claude-code")
+    monkeypatch.setenv("NAVER_BOT_CLAUDE_COMMAND", "custom-claude")
+    monkeypatch.setenv("NAVER_BOT_CLAUDE_CLI_TIMEOUT_SECONDS", "120")
+
+    settings = Settings()
+
+    assert settings.claude_backend == "claude-code"
+    assert settings.claude_command == "custom-claude"
+    assert settings.claude_cli_timeout_seconds == 120
+
+
 def test_ensure_local_directories_creates_expected_paths(tmp_path: Path) -> None:
     settings = Settings(
         config_dir=tmp_path / "config",
