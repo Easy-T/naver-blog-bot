@@ -18,10 +18,20 @@ def _make_doc(url: str) -> PostDocument:
 
 
 def _make_playwright_patcher(context_factory):
+    class _FakeBrowser:
+        def __init__(self, ctx):
+            self._ctx = ctx
+            self.new_context = AsyncMock(return_value=ctx)
+
+    class _FakeChromium:
+        def __init__(self, ctx):
+            self._ctx = ctx
+            self.launch_persistent_context = AsyncMock(return_value=ctx)
+            self.launch = AsyncMock(return_value=_FakeBrowser(ctx))
+
     class _FakePW:
         def __init__(self, ctx):
-            self.chromium = MagicMock()
-            self.chromium.launch_persistent_context = AsyncMock(return_value=ctx)
+            self.chromium = _FakeChromium(ctx)
 
         async def __aenter__(self):
             return self

@@ -421,6 +421,36 @@ def test_profile_refresh_mixed_local_and_url(monkeypatch, tmp_path: Path) -> Non
     assert "2 sample(s) used" in result.stdout
 
 
+def test_profile_refresh_url_before_local(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    local_file = tmp_path / "local.md"
+    local_file.write_text("로컬 샘플 내용", encoding="utf-8")
+
+    doc = _make_fake_document("URL 포스트", "URL 본문")
+    fake_scrape = FakeScrapeService([doc])
+    monkeypatch.setattr(cli, "scrape_source", fake_scrape)
+
+    received_sample_texts: list[list[str]] = []
+
+    def capturing_refresh(*, profile_name, blog_url, sample_texts, completer):
+        received_sample_texts.append(list(sample_texts))
+        return StyleProfile(profile_name=profile_name, blog_url=blog_url)
+
+    monkeypatch.setattr(cli, "refresh_style_profile", capturing_refresh)
+
+    result = runner.invoke(
+        cli.app,
+        ["profile-refresh", "https://m.blog.naver.com/user/123", str(local_file)],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    texts = received_sample_texts[0]
+    assert len(texts) == 2
+    assert "URL 포스트" in texts[0]
+    assert "로컬 샘플 내용" in texts[1]
+    assert "2 sample(s) used" in result.stdout
+
+
 def test_profile_refresh_scraper_value_error_exits_1(
     monkeypatch, tmp_path: Path
 ) -> None:

@@ -18,16 +18,24 @@ def _is_tistory(hostname: str) -> bool:
     return hostname.endswith(".tistory.com")
 
 
-async def scrape_post(url: str, settings: Settings) -> PostDocument:
-    async with async_playwright() as pw:
-        context = await pw.chromium.launch_persistent_context(
+async def _make_context(pw, *, naver_persistent: bool, settings: Settings):
+    if naver_persistent:
+        return await pw.chromium.launch_persistent_context(
             str(settings.browser_profile_dir),
             headless=True,
         )
+    browser = await pw.chromium.launch(headless=True)
+    return await browser.new_context()
+
+
+async def scrape_post(url: str, settings: Settings) -> PostDocument:
+    hostname = urlparse(url).hostname or ""
+    is_naver = _is_naver(hostname)
+    async with async_playwright() as pw:
+        context = await _make_context(pw, naver_persistent=is_naver, settings=settings)
         page = await context.new_page()
         try:
-            hostname = urlparse(url).hostname or ""
-            if _is_naver(hostname):
+            if is_naver:
                 doc = await naver.scrape_post(page, url)
             elif _is_tistory(hostname):
                 doc = await tistory.scrape_post(page, url)
@@ -40,15 +48,13 @@ async def scrape_post(url: str, settings: Settings) -> PostDocument:
 
 async def scrape_blog(url: str, count: int, settings: Settings) -> list[PostDocument]:
     hostname = urlparse(url).hostname or ""
+    is_naver = _is_naver(hostname)
 
     async with async_playwright() as pw:
-        context = await pw.chromium.launch_persistent_context(
-            str(settings.browser_profile_dir),
-            headless=True,
-        )
+        context = await _make_context(pw, naver_persistent=is_naver, settings=settings)
         page = await context.new_page()
         try:
-            if _is_naver(hostname):
+            if is_naver:
                 post_urls = await naver.collect_blog_post_urls(page, url, count)
                 scrape_fn = naver.scrape_post
             elif _is_tistory(hostname):
