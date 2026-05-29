@@ -1,7 +1,7 @@
 import json
 from collections.abc import Sequence
-from typing import Protocol
 
+from naver_blog_bot.shared.protocols import TextCompleter
 from naver_blog_bot.style_profiler.models import StyleProfile
 
 SYSTEM_PROMPT = """너는 한국어 블로그 포스트의 문체 분석가다.
@@ -21,16 +21,6 @@ SYSTEM_PROMPT = """너는 한국어 블로그 포스트의 문체 분석가다.
 }
 
 각 리스트는 3-8개의 간결한 한국어 문자열을 포함해야 한다. JSON 외의 다른 텍스트는 반환하지 마라."""
-
-
-class TextCompleter(Protocol):
-    def complete_text(
-        self,
-        *,
-        system_prompt: str,
-        user_prompt: str,
-        cacheable_context: Sequence[str],
-    ) -> str: ...
 
 
 def refresh_style_profile(

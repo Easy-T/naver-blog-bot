@@ -1,28 +1,18 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol
 
 from naver_blog_bot.config import Settings
 from naver_blog_bot.meme_library.models import MemeAsset, MemeIndex
 from naver_blog_bot.post_generator.drafts import draft_id_from_time
 from naver_blog_bot.post_generator.models import Draft
+from naver_blog_bot.shared.protocols import TextCompleter
 from naver_blog_bot.style_profiler.models import StyleProfile
 
 SYSTEM_PROMPT = """너는 네이버 블로그 체험단 후기 초안을 작성하는 한국어 글쓰기 도우미다.
 사용자의 기존 문체를 우선하고, 과장된 광고 문장보다 실제 사용 경험처럼 자연스럽게 쓴다.
 사진 위치, 이모티콘 의도, 짤방 후보는 초안에 사람이 검토할 수 있는 표시로 남긴다.
 이모티콘 위치는 캐시 컨텍스트의 emoticon_usage_patterns에서 학습한 패턴을 따른다. 모든 문단에 강제로 넣지 않는다."""
-
-
-class TextCompleter(Protocol):
-    def complete_text(
-        self,
-        *,
-        system_prompt: str,
-        user_prompt: str,
-        cacheable_context: Sequence[str],
-    ) -> str: ...
 
 
 def extract_title(markdown: str) -> str:
