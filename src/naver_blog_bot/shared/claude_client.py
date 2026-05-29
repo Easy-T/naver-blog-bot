@@ -2,6 +2,7 @@ import json
 import shutil
 import subprocess
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from anthropic import Anthropic
@@ -43,6 +44,48 @@ class ClaudeTextClient:
             messages=[{"role": "user", "content": user_prompt}],
         )
 
+        parts: list[str] = []
+        for block in message.content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(str(block["text"]))
+            elif getattr(block, "type", None) == "text":
+                parts.append(str(block.text))
+        return "".join(parts).strip()
+
+    def complete_vision(self, *, image_path: Path, prompt: str) -> str:
+        import base64
+
+        image_data = base64.standard_b64encode(image_path.read_bytes()).decode("utf-8")
+        suffix = image_path.suffix.lower().lstrip(".")
+        media_type_map = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "gif": "image/gif",
+            "webp": "image/webp",
+        }
+        media_type = media_type_map.get(suffix, "image/jpeg")
+
+        message = self.client.messages.create(
+            model=self.settings.claude_model,
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_data,
+                            },
+                        },
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ],
+        )
         parts: list[str] = []
         for block in message.content:
             if isinstance(block, dict) and block.get("type") == "text":
@@ -136,6 +179,42 @@ class ClaudeCodeTextClient:
         raise ClaudeBackendError(
             "Claude Code CLI JSON output did not include result text."
         )
+
+    def complete_vision(self, *, image_path: Path, prompt: str) -> str:
+        args = [
+            self.settings.claude_command,
+            "-p",
+            "--output-format",
+            "json",
+            "--model",
+            self.settings.claude_model,
+            "--image",
+            str(image_path),
+        ]
+        try:
+            result = subprocess.run(
+                args,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.settings.claude_cli_timeout_seconds,
+            )
+        except FileNotFoundError as exc:
+            raise ClaudeBackendError(
+                "Claude Code CLI not found. Install Claude Code or set "
+                "NAVER_BOT_CLAUDE_BACKEND=anthropic-sdk with ANTHROPIC_API_KEY."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise ClaudeBackendError(
+                f"Claude Code CLI timed out after {self.settings.claude_cli_timeout_seconds}s."
+            ) from exc
+
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "no output"
+            raise ClaudeBackendError(f"Claude Code CLI failed. Detail: {detail}")
+
+        return self._parse_output(result.stdout)
 
 
 def build_text_completer(
