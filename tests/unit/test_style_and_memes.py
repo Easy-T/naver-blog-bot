@@ -136,6 +136,32 @@ def test_style_profile_path_builds_correct_path(monkeypatch, tmp_path: Path) -> 
     assert path == tmp_path / "config" / "style_profiles" / "food-review.json"
 
 
+def test_style_profile_cache_text_excludes_volatile_fields() -> None:
+    p1 = StyleProfile(
+        blog_url="https://blog.naver.com/flowerbend",
+        profile_name="default",
+        structure_patterns=["도입부에 개인 경험"],
+    )
+    import time; time.sleep(0.01)
+    p2 = StyleProfile(
+        blog_url="https://blog.naver.com/flowerbend",
+        profile_name="default",
+        structure_patterns=["도입부에 개인 경험"],
+    )
+    assert p1.to_cache_text() == p2.to_cache_text()
+    assert "blog_url" not in p1.to_cache_text()
+    assert "profile_name" not in p1.to_cache_text()
+    assert "updated_at" not in p1.to_cache_text()
+
+
+def test_meme_index_cache_text_excludes_updated_at() -> None:
+    from datetime import datetime, timezone
+    idx1 = MemeIndex(updated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    idx2 = MemeIndex(updated_at=datetime(2026, 6, 1, tzinfo=timezone.utc))
+    assert idx1.to_cache_text() == idx2.to_cache_text()
+    assert "updated_at" not in idx1.to_cache_text()
+
+
 def test_style_profile_path_rejects_invalid_name(monkeypatch, tmp_path: Path) -> None:
     import pytest
 

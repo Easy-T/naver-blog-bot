@@ -31,6 +31,5 @@ class MemeIndex(BaseModel):
         return [meme for _, meme in scored[:limit]]
 
     def to_cache_text(self) -> str:
-        return json.dumps(
-            self.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True
-        )
+        data = {"memes": [m.model_dump(mode="json") for m in self.memes]}
+        return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)

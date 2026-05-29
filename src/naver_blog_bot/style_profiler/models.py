@@ -16,6 +16,12 @@ class StyleProfile(BaseModel):
     emoticon_usage_patterns: list[str] = Field(default_factory=list)
 
     def to_cache_text(self) -> str:
-        return json.dumps(
-            self.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True
-        )
+        data = {
+            "structure_patterns": self.structure_patterns,
+            "tone_keywords": self.tone_keywords,
+            "frequent_expressions": self.frequent_expressions,
+            "review_conventions": self.review_conventions,
+            "photo_usage_notes": self.photo_usage_notes,
+            "emoticon_usage_patterns": self.emoticon_usage_patterns,
+        }
+        return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
