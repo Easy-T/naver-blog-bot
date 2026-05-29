@@ -58,7 +58,9 @@ class Draft(BaseModel):
             else:
                 processed = re.sub(
                     r"\{\{이모티콘:([^}]+)\}\}",
-                    lambda m: f'<span class="emoticon-badge">😊 {_html.escape(m.group(1))}</span>',
+                    lambda m: (
+                        f'<span class="emoticon-badge">😊 {_html.escape(m.group(1))}</span>'
+                    ),
                     _html.escape(line),
                 )
                 lines.append(f"<p>{processed}</p>")

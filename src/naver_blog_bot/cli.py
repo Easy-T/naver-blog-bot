@@ -6,6 +6,7 @@ import typer
 
 try:
     import pyperclip as _pyperclip
+
     _PYPERCLIP_AVAILABLE = True
 except ImportError:
     _pyperclip = None  # type: ignore[assignment]
@@ -297,7 +298,9 @@ def meme_fetch_command(
         typer.echo(f"Error downloading image: {exc}")
         raise typer.Exit(1)
 
-    content_type = response.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+    content_type = (
+        response.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+    )
     ext_map = {
         "image/jpeg": ".jpg",
         "image/png": ".png",

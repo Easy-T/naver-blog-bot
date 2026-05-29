@@ -539,6 +539,7 @@ def test_profile_refresh_missing_local_file_still_errors(
 def test_meme_fetch_downloads_image_and_tags(monkeypatch, tmp_path: Path) -> None:
     configure_paths(monkeypatch, tmp_path)
     from naver_blog_bot.config import Settings, ensure_local_directories
+
     settings = Settings()
     ensure_local_directories(settings)
 
@@ -548,15 +549,19 @@ def test_meme_fetch_downloads_image_and_tags(monkeypatch, tmp_path: Path) -> Non
         status_code = 200
         content = fake_image_bytes
         headers = {"content-type": "image/jpeg"}
+
         def raise_for_status(self):
             pass
 
     import httpx
+
     monkeypatch.setattr(httpx, "get", lambda url, **kwargs: FakeResponse())
 
     class FakeTagger:
         def complete_vision(self, *, image_path, prompt):
-            return '{"tags": ["재미"], "use_cases": ["유머"], "alt_text": "재미있는 짤방"}'
+            return (
+                '{"tags": ["재미"], "use_cases": ["유머"], "alt_text": "재미있는 짤방"}'
+            )
 
     monkeypatch.setattr(cli, "build_text_completer", lambda s: FakeTagger())
 

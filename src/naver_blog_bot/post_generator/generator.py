@@ -60,7 +60,9 @@ class PostGenerator:
                 style_profile.to_cache_text(),
                 meme_index.to_cache_text(),
             ],
-            user_prompt=self._build_user_prompt(photo_paths, memo, selected_memes, examples),
+            user_prompt=self._build_user_prompt(
+                photo_paths, memo, selected_memes, examples
+            ),
         )
         body_markdown = self._place_memes_in_draft(body_markdown, meme_index)
         created_at = self.now()
@@ -96,7 +98,9 @@ class PostGenerator:
             parts = []
             for i, ex in enumerate(examples, start=1):
                 parts.append(f"[예시 {i}] {ex.title}\n{ex.structured_text}")
-            examples_section = "\n\n참고 예시 포스트 (문체 참고용):\n" + "\n\n".join(parts)
+            examples_section = "\n\n참고 예시 포스트 (문체 참고용):\n" + "\n\n".join(
+                parts
+            )
 
         return f"""다음 메모와 사진 목록을 바탕으로 네이버 블로그 초안을 작성해줘.{examples_section}
 

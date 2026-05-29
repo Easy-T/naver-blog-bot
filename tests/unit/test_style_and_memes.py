@@ -142,7 +142,9 @@ def test_style_profile_cache_text_excludes_volatile_fields() -> None:
         profile_name="default",
         structure_patterns=["도입부에 개인 경험"],
     )
-    import time; time.sleep(0.01)
+    import time
+
+    time.sleep(0.01)
     p2 = StyleProfile(
         blog_url="https://blog.naver.com/flowerbend",
         profile_name="default",
@@ -156,6 +158,7 @@ def test_style_profile_cache_text_excludes_volatile_fields() -> None:
 
 def test_meme_index_cache_text_excludes_updated_at() -> None:
     from datetime import datetime, timezone
+
     idx1 = MemeIndex(updated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
     idx2 = MemeIndex(updated_at=datetime(2026, 6, 1, tzinfo=timezone.utc))
     assert idx1.to_cache_text() == idx2.to_cache_text()

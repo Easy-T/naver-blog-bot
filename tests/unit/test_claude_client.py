@@ -214,7 +214,12 @@ def test_claude_code_vision_client_builds_correct_args(monkeypatch) -> None:
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"type": "result", "result": '{"tags": ["만족"], "use_cases": ["후기 마무리"], "alt_text": "만족 표정"}'}),
+            stdout=json.dumps(
+                {
+                    "type": "result",
+                    "result": '{"tags": ["만족"], "use_cases": ["후기 마무리"], "alt_text": "만족 표정"}',
+                }
+            ),
             stderr="",
         )
 
@@ -225,14 +230,19 @@ def test_claude_code_vision_client_builds_correct_args(monkeypatch) -> None:
         prompt="이 이미지를 분석해라",
     )
 
-    assert result == '{"tags": ["만족"], "use_cases": ["후기 마무리"], "alt_text": "만족 표정"}'
+    assert (
+        result
+        == '{"tags": ["만족"], "use_cases": ["후기 마무리"], "alt_text": "만족 표정"}'
+    )
     assert "--image" in calls[0]
     assert "/tmp/test.jpg" in calls[0]
 
 
 def test_claude_code_vision_raises_on_failure(monkeypatch) -> None:
     def fake_run(args, **kwargs):
-        return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="image not found")
+        return subprocess.CompletedProcess(
+            args=args, returncode=1, stdout="", stderr="image not found"
+        )
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     client = ClaudeCodeTextClient(settings=Settings())
