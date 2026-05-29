@@ -1,7 +1,15 @@
+import webbrowser
 from pathlib import Path
 from typing import Annotated
 
 import typer
+
+try:
+    import pyperclip as _pyperclip
+    _PYPERCLIP_AVAILABLE = True
+except ImportError:
+    _pyperclip = None  # type: ignore[assignment]
+    _PYPERCLIP_AVAILABLE = False
 
 from naver_blog_bot.blog_scraper.service import scrape as scrape_source
 from naver_blog_bot.config import Settings, ensure_local_directories, get_settings
@@ -185,7 +193,25 @@ def preview_command(
     except FileNotFoundError:
         typer.echo(f"Draft not found: {draft_id}")
         raise typer.Exit(1)
-    typer.echo(draft.preview_text())
+
+    html_path = settings.drafts_dir / f"{draft_id}.html"
+    html_path.write_text(draft.to_html(), encoding="utf-8")
+    webbrowser.open(html_path.as_uri())
+
+    if _PYPERCLIP_AVAILABLE:
+        try:
+            _pyperclip.copy(draft.body_markdown)
+            typer.echo(f"Preview opened: {html_path}\nContent copied to clipboard.")
+        except Exception:
+            typer.echo(
+                f"Preview opened: {html_path}\n"
+                "(Clipboard copy failed — install xclip or xsel on WSL2.)"
+            )
+    else:
+        typer.echo(
+            f"Preview opened: {html_path}\n"
+            "(pyperclip not available — run 'uv sync' to enable clipboard.)"
+        )
 
 
 @app.command("meme-build")

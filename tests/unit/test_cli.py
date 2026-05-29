@@ -147,8 +147,8 @@ def test_preview_outputs_saved_draft(monkeypatch, tmp_path: Path) -> None:
     result = runner.invoke(cli.app, ["preview", "draft-20260503-120000"])
 
     assert result.exit_code == 0
-    assert "Draft ID: draft-20260503-120000" in result.stdout
-    assert "미리보기 메모" in result.stdout
+    assert "Preview opened:" in result.stdout
+    assert "draft-20260503-120000.html" in result.stdout
 
 
 def test_publish_command_is_blocked_in_foundation_slice(
