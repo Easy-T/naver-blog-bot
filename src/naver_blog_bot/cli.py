@@ -280,6 +280,54 @@ def meme_build_command() -> None:
     typer.echo(f"Done: {new_count} new image(s) tagged, {skipped} existing skipped.")
 
 
+@app.command("meme-fetch")
+def meme_fetch_command(
+    url: Annotated[str, typer.Argument(help="Image URL to download and register.")],
+) -> None:
+    import httpx
+    from urllib.parse import urlparse
+
+    settings = get_settings()
+    ensure_local_directories(settings)
+
+    try:
+        response = httpx.get(url, follow_redirects=True, timeout=30)
+        response.raise_for_status()
+    except Exception as exc:
+        typer.echo(f"Error downloading image: {exc}")
+        raise typer.Exit(1)
+
+    content_type = response.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+    ext_map = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+    }
+    ext = ext_map.get(content_type, ".jpg")
+
+    parsed_name = Path(urlparse(url).path).stem or "meme"
+    dest = settings.memes_dir / f"{parsed_name}{ext}"
+    counter = 2
+    while dest.exists():
+        dest = settings.memes_dir / f"{parsed_name}-{counter}{ext}"
+        counter += 1
+
+    dest.write_bytes(response.content)
+
+    try:
+        asset = tag_meme_image(dest, build_text_completer(settings))
+    except (ClaudeBackendError, ValueError) as exc:
+        dest.unlink(missing_ok=True)
+        typer.echo(f"Error tagging image: {exc}")
+        raise typer.Exit(1)
+
+    index = load_meme_index(settings.meme_index_path)
+    updated = add_or_update_meme(index, asset)
+    save_meme_index(settings.meme_index_path, updated)
+    typer.echo(f"Fetched and added: {dest.name} (tags: {', '.join(asset.tags)})")
+
+
 @app.command("publish")
 def publish_command(
     draft_id: Annotated[str, typer.Argument(help="Draft ID to publish.")],
