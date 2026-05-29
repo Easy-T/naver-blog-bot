@@ -13,7 +13,12 @@ except ImportError:
 
 from naver_blog_bot.blog_scraper.service import scrape as scrape_source
 from naver_blog_bot.config import Settings, ensure_local_directories, get_settings
-from naver_blog_bot.meme_library.service import load_meme_index
+from naver_blog_bot.meme_library.service import (
+    add_or_update_meme,
+    load_meme_index,
+    save_meme_index,
+    tag_meme_image,
+)
 from naver_blog_bot.post_generator.drafts import DraftRepository
 from naver_blog_bot.post_generator.generator import PostGenerator
 from naver_blog_bot.shared.claude_client import ClaudeBackendError, build_text_completer
@@ -231,10 +236,48 @@ def preview_command(
         )
 
 
+@app.command("meme-add")
+def meme_add_command(
+    image_path: Annotated[Path, typer.Argument(help="Path to meme image file.")],
+) -> None:
+    if not image_path.is_file():
+        typer.echo(f"Error: file not found: {image_path}")
+        raise typer.Exit(1)
+    settings = get_settings()
+    try:
+        asset = tag_meme_image(image_path, build_text_completer(settings))
+    except (ClaudeBackendError, ValueError) as exc:
+        typer.echo(f"Error: {exc}")
+        raise typer.Exit(1)
+    index = load_meme_index(settings.meme_index_path)
+    updated = add_or_update_meme(index, asset)
+    save_meme_index(settings.meme_index_path, updated)
+    typer.echo(f"Added: {image_path.name} (tags: {', '.join(asset.tags)})")
+
+
 @app.command("meme-build")
 def meme_build_command() -> None:
-    typer.echo("meme-build is outside this foundation slice.")
-    raise typer.Exit(1)
+    settings = get_settings()
+    ensure_local_directories(settings)
+    index = load_meme_index(settings.meme_index_path)
+    existing_ids = {m.id for m in index.memes}
+    extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    new_count = 0
+    for image_path in sorted(settings.memes_dir.iterdir()):
+        if image_path.suffix.lower() not in extensions:
+            continue
+        if image_path.stem in existing_ids:
+            continue
+        try:
+            asset = tag_meme_image(image_path, build_text_completer(settings))
+            index = add_or_update_meme(index, asset)
+            new_count += 1
+            typer.echo(f"Tagged: {image_path.name}")
+        except (ClaudeBackendError, ValueError) as exc:
+            typer.echo(f"Skipped {image_path.name}: {exc}")
+    save_meme_index(settings.meme_index_path, index)
+    skipped = len(existing_ids)
+    typer.echo(f"Done: {new_count} new image(s) tagged, {skipped} existing skipped.")
 
 
 @app.command("publish")

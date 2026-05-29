@@ -176,3 +176,36 @@ def test_style_profile_path_rejects_invalid_name(monkeypatch, tmp_path: Path) ->
     settings = Settings()
     with pytest.raises(ValueError):
         style_profile_path(settings, "../secret")
+
+
+def test_tag_meme_image_parses_vision_response(tmp_path: Path) -> None:
+    from naver_blog_bot.meme_library.service import tag_meme_image
+
+    image_path = tmp_path / "happy.jpg"
+    image_path.write_bytes(b"fake image")
+
+    class FakeVisionClient:
+        def complete_vision(self, *, image_path, prompt):
+            return '{"tags": ["기쁨", "만족"], "use_cases": ["후기 마무리", "만족 표현"], "alt_text": "기쁜 표정"}'
+
+    asset = tag_meme_image(image_path, FakeVisionClient())
+    assert asset.id == "happy"
+    assert asset.path == image_path
+    assert "기쁨" in asset.tags
+    assert "후기 마무리" in asset.use_cases
+    assert asset.alt_text == "기쁜 표정"
+
+
+def test_tag_meme_image_handles_invalid_json(tmp_path: Path) -> None:
+    import pytest
+    from naver_blog_bot.meme_library.service import tag_meme_image
+
+    image_path = tmp_path / "bad.jpg"
+    image_path.write_bytes(b"fake")
+
+    class BrokenVision:
+        def complete_vision(self, *, image_path, prompt):
+            return "이건 JSON이 아님"
+
+    with pytest.raises(ValueError, match="Vision"):
+        tag_meme_image(image_path, BrokenVision())
