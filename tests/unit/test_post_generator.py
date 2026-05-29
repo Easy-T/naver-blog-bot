@@ -130,3 +130,42 @@ def test_post_generator_works_without_examples() -> None:
     )
 
     assert draft.body_markdown
+
+
+def test_place_memes_in_draft_inserts_markers() -> None:
+    class MarkerClaude:
+        def complete_text(self, **kwargs):
+            return "# 제목\n\n좋았어요.\n[짤방: satisfied]\n\n마무리."
+
+    settings = Settings()
+    generator = PostGenerator(settings=settings, claude_client=MarkerClaude())
+    meme_index = MemeIndex(
+        memes=[
+            MemeAsset(
+                id="satisfied",
+                path=Path("assets/memes/satisfied.png"),
+                tags=["만족"],
+                use_cases=["만족 표현"],
+                alt_text="만족",
+            )
+        ]
+    )
+    body = "# 제목\n\n좋았어요.\n\n마무리."
+
+    result = generator._place_memes_in_draft(body, meme_index)
+
+    assert "[짤방: satisfied]" in result
+
+
+def test_place_memes_skips_when_no_memes() -> None:
+    class NeverCalled:
+        def complete_text(self, **kwargs):
+            raise AssertionError("should not be called")
+
+    settings = Settings()
+    generator = PostGenerator(settings=settings, claude_client=NeverCalled())
+    body = "본문입니다."
+
+    result = generator._place_memes_in_draft(body, MemeIndex())
+
+    assert result == "본문입니다."

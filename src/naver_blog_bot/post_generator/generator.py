@@ -15,6 +15,14 @@ SYSTEM_PROMPT = """너는 네이버 블로그 체험단 후기 초안을 작성�
 사진 위치, 이모티콘 의도, 짤방 후보는 초안에 사람이 검토할 수 있는 표시로 남긴다.
 이모티콘 위치는 캐시 컨텍스트의 emoticon_usage_patterns에서 학습한 패턴을 따른다. 모든 문단에 강제로 넣지 않는다."""
 
+MEME_PLACEMENT_SYSTEM = """너는 한국어 블로그 편집자다.
+초안과 짤방 목록을 보고, 각 짤방이 자연스럽게 어울리는 문단 바로 다음 줄에 [짤방: {id}] 마커를 삽입해라.
+규칙:
+- 억지로 넣지 마라. 정말 어울리는 곳에만.
+- 짤방 하나는 한 번만 사용.
+- 마커 외 본문 텍스트는 절대 수정하지 마라.
+- 수정된 초안 전체만 반환해라."""
+
 
 def extract_title(markdown: str) -> str:
     for line in markdown.splitlines():
@@ -54,6 +62,7 @@ class PostGenerator:
             ],
             user_prompt=self._build_user_prompt(photo_paths, memo, selected_memes, examples),
         )
+        body_markdown = self._place_memes_in_draft(body_markdown, meme_index)
         created_at = self.now()
         return Draft(
             id=draft_id_from_time(created_at),
@@ -111,3 +120,17 @@ class PostGenerator:
 - 이모티콘을 넣을 위치는 `{{{{이모티콘:감정유형}}}}` 형식으로 표시 (예: `{{{{이모티콘:만족}}}}`, `{{{{이모티콘:감탄}}}}`, `{{{{이모티콘:마무리}}}}`)
 - 짤방을 넣을 위치는 `[짤방: meme_id]` 형식으로 표시
 """
+
+    def _place_memes_in_draft(self, body: str, meme_index: MemeIndex) -> str:
+        if not meme_index.memes:
+            return body
+        meme_list = "\n".join(
+            f"- id: {m.id}, use_cases: {', '.join(m.use_cases)}, tags: {', '.join(m.tags)}"
+            for m in meme_index.memes
+        )
+        user_prompt = f"초안:\n\n{body}\n\n짤방 목록:\n{meme_list}"
+        return self.claude_client.complete_text(
+            system_prompt=MEME_PLACEMENT_SYSTEM,
+            user_prompt=user_prompt,
+            cacheable_context=[],
+        )
