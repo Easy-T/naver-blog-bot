@@ -7,6 +7,7 @@ from naver_blog_bot.meme_library.models import MemeAsset, MemeIndex
 from naver_blog_bot.post_generator.drafts import draft_id_from_time
 from naver_blog_bot.post_generator.models import Draft
 from naver_blog_bot.shared.protocols import TextCompleter
+from naver_blog_bot.style_profiler.examples import ExamplePost
 from naver_blog_bot.style_profiler.models import StyleProfile
 
 SYSTEM_PROMPT = """너는 네이버 블로그 체험단 후기 초안을 작성하는 한국어 글쓰기 도우미다.
@@ -42,6 +43,7 @@ class PostGenerator:
         memo: str,
         style_profile: StyleProfile,
         meme_index: MemeIndex,
+        examples: list[ExamplePost] | None = None,
     ) -> Draft:
         selected_memes = meme_index.candidates_for_memo(memo)
         body_markdown = self.claude_client.complete_text(
@@ -50,7 +52,7 @@ class PostGenerator:
                 style_profile.to_cache_text(),
                 meme_index.to_cache_text(),
             ],
-            user_prompt=self._build_user_prompt(photo_paths, memo, selected_memes),
+            user_prompt=self._build_user_prompt(photo_paths, memo, selected_memes, examples),
         )
         created_at = self.now()
         return Draft(
@@ -65,7 +67,11 @@ class PostGenerator:
         )
 
     def _build_user_prompt(
-        self, photo_paths: list[Path], memo: str, selected_memes: list[MemeAsset]
+        self,
+        photo_paths: list[Path],
+        memo: str,
+        selected_memes: list[MemeAsset],
+        examples: list[ExamplePost] | None,
     ) -> str:
         photos = "\n".join(f"- {path}" for path in photo_paths)
         memes = (
@@ -75,7 +81,15 @@ class PostGenerator:
             )
             or "- 선택된 짤방 없음"
         )
-        return f"""다음 메모와 사진 목록을 바탕으로 네이버 블로그 초안을 작성해줘.
+
+        examples_section = ""
+        if examples:
+            parts = []
+            for i, ex in enumerate(examples, start=1):
+                parts.append(f"[예시 {i}] {ex.title}\n{ex.structured_text}")
+            examples_section = "\n\n참고 예시 포스트 (문체 참고용):\n" + "\n\n".join(parts)
+
+        return f"""다음 메모와 사진 목록을 바탕으로 네이버 블로그 초안을 작성해줘.{examples_section}
 
 메모:
 {memo}
@@ -95,5 +109,5 @@ class PostGenerator:
 - 본문은 한국어 마크다운으로 작성
 - 사진을 넣을 위치는 `[사진: 파일경로]` 형식으로 표시
 - 이모티콘을 넣을 위치는 `{{{{이모티콘:감정유형}}}}` 형식으로 표시 (예: `{{{{이모티콘:만족}}}}`, `{{{{이모티콘:감탄}}}}`, `{{{{이모티콘:마무리}}}}`)
-- 짤방을 넣을 위치는 `[짤방: 파일경로]` 형식으로 표시
+- 짤방을 넣을 위치는 `[짤방: meme_id]` 형식으로 표시
 """

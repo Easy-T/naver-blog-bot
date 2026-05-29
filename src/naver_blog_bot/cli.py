@@ -17,6 +17,7 @@ from naver_blog_bot.meme_library.service import load_meme_index
 from naver_blog_bot.post_generator.drafts import DraftRepository
 from naver_blog_bot.post_generator.generator import PostGenerator
 from naver_blog_bot.shared.claude_client import ClaudeBackendError, build_text_completer
+from naver_blog_bot.style_profiler.examples import ExamplePost, FewShotRepository
 from naver_blog_bot.style_profiler.refresh import refresh_style_profile
 from naver_blog_bot.style_profiler.service import (
     load_style_profile,
@@ -83,6 +84,7 @@ def profile_refresh_command(
         raise typer.Exit(1)
 
     sample_texts: list[str] = []
+    url_examples: list[ExamplePost] = []
     first_url: str | None = None
 
     for source in sources:
@@ -99,6 +101,13 @@ def profile_refresh_command(
                 raise typer.Exit(1)
             for doc in docs:
                 sample_texts.append(doc.to_structured_text())
+                url_examples.append(
+                    ExamplePost(
+                        title=doc.title or "",
+                        url=doc.url,
+                        structured_text=doc.to_structured_text(),
+                    )
+                )
         else:
             path = Path(source)
             if not path.is_file():
@@ -124,6 +133,11 @@ def profile_refresh_command(
 
     save_path = style_profile_path(settings, profile)
     save_style_profile(save_path, result)
+
+    if url_examples:
+        examples_path = settings.style_profiles_dir / f"{profile}-examples.json"
+        FewShotRepository(examples_path).save(url_examples)
+
     typer.echo(f"Style profile saved: {save_path} ({len(sample_texts)} sample(s) used)")
 
 
@@ -168,6 +182,8 @@ def draft_command(
         raise typer.Exit(1)
 
     style_profile = load_style_profile(named_path, settings.blog_url)
+    examples_path = settings.style_profiles_dir / f"{profile}-examples.json"
+    examples = FewShotRepository(examples_path).load() or None
     meme_index = load_meme_index(settings.meme_index_path)
     try:
         draft = build_generator(settings).generate(
@@ -175,6 +191,7 @@ def draft_command(
             memo=memo,
             style_profile=style_profile,
             meme_index=meme_index,
+            examples=examples,
         )
     except ClaudeBackendError as exc:
         typer.echo(f"Error: {exc}")
