@@ -12,6 +12,7 @@ except ImportError:
     _pyperclip = None  # type: ignore[assignment]
     _PYPERCLIP_AVAILABLE = False
 
+from naver_blog_bot.blog_scraper.login import run_login
 from naver_blog_bot.blog_scraper.service import scrape as scrape_source
 from naver_blog_bot.config import Settings, ensure_local_directories, get_settings
 from naver_blog_bot.meme_library.service import (
@@ -53,6 +54,17 @@ def init_command() -> None:
     for path in created:
         typer.echo(f"- {path}")
     typer.echo("Naver browser login automation is outside this foundation slice.")
+
+
+@app.command("login")
+def login_command() -> None:
+    import asyncio
+
+    settings = get_settings()
+    ensure_local_directories(settings)
+    typer.echo("브라우저 창에서 네이버에 로그인하세요. 완료 후 터미널에서 Enter.")
+    asyncio.run(run_login(settings))
+    typer.echo(f"로그인 세션이 저장되었습니다: {settings.browser_profile_dir}")
 
 
 @app.command("profile-refresh")

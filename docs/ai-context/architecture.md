@@ -32,6 +32,8 @@ graph TD
   post_generator --> examples
   cli --> examples
   style_profiler --> examples
+  cli --> login["blog_scraper/login.py"]
+  login --> config
 ```
 
 > 갱신 정책: 모듈 추가/삭제/의존성 변경 시 review-strict가 갱신.
@@ -99,6 +101,15 @@ graph TD
 - 이유: The tool is local-first and the target user already runs Claude Code locally, so requiring a separate API key is unnecessary friction for the common path.
 - 대안: Remove SDK support entirely; keep API-key-only generation; export prompts for manual copy/paste into Claude Code.
 - 트레이드오프: Claude Code backend cannot use SDK prompt-cache block semantics and depends on local CLI availability/login state, but it removes API key setup for local users while keeping SDK fallback for automation.
+
+### ADR-005: Headed manual login + mobile-home post-list endpoint
+
+- 날짜: 2026-05-30
+- 상태: Accepted
+- 결정: (1) `naver-bot login`이 headed(headless=False) persistent Chromium을 `browser-profile/`로 띄워 사용자가 직접 네이버에 로그인하고 세션을 디스크에 저장한다. (2) `post_list_url`은 레거시 `PostList.naver` 대신 모바일 블로그 홈 `m.blog.naver.com/{blogId}`를 사용하고, `collect_blog_post_urls`는 live DOM 앵커를 폴링한다.
+- 이유: probe 진단 결과 `PostList.naver`는 포스트 앵커 0개(비결정적), 모바일 홈은 로그아웃 상태로도 공개 글을 안정 렌더. 공개 글은 로그인 불필요하나 비공개·이웃공개 글과 세션 안정성을 위해 headed 수동 로그인을 제공한다. 자동 자격증명 입력은 CAPTCHA/2FA·ToS 위험으로 배제.
+- 대안: PostList.naver 유지(실패); PC iframe(mainFrame) 파싱; headless 자동 로그인; API 키만 사용.
+- 트레이드오프: WSLg 등 디스플레이가 필요하고 1회 수동 로그인 단계가 생기지만, 자동화 탐지·계정 위험을 피하고 공개·비공개 글 모두 학습 가능하게 한다.
 
 <!-- ADR 형식:
 ### ADR-001: <제목>
