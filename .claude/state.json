@@ -3,9 +3,9 @@
   "project_name": "naver-blog-bot",
   "created_at": "2026-05-02",
   "cycle": {
-    "count": 6,
+    "count": 7,
     "last_completed_at": "2026-05-30",
-    "last_cycle_id": "2026-05-29-draft-quality-enhancement"
+    "last_cycle_id": "2026-05-30-naver-scraper-fix"
   },
   "features": {
     "v2_enabled": false,

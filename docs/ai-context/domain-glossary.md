@@ -25,6 +25,9 @@
 | 브라우저 미리보기 | `preview_command()`, `Draft.to_html()` | `preview` 명령이 생성하는 로컬 HTML 파일. 자동으로 브라우저가 열리고 네이버 블로그 유사 레이아웃으로 렌더링 |
 | 클립보드 복사 | `preview_command()` + `pyperclip` | `preview` 실행 시 초안 본문을 클립보드에 자동 복사. 네이버 SmartEditor에 수동 붙여넣기 위해 사용 |
 
+| 포스트 목록 수집 | `naver.collect_blog_post_urls()`, `_select_post_hrefs()` | 블로그 홈/카테고리 페이지에서 최근 포스트 URL을 모으는 단계. 네이버는 JS 렌더 후 live DOM(`page.eval_on_selector_all`)에서 앵커를 추출해야 함 — 정적 HTML 커스텀 파서는 0개 반환 |
+| 카테고리별 프로필 | `naver.post_list_url(url)`, `categoryNo` | 네이버 블로그 카테고리별로 글만 학습해 별도 named 프로필로 저장. `profile-refresh <카테고리URL> --profile <이름>` |
+
 ## Identical-Looking, Different Meaning
 
 (같은 단어인데 컨텍스트마다 의미가 다른 경우. 예: price vs amount)
