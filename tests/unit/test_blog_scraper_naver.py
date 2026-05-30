@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from naver_blog_bot.blog_scraper.adapters import naver
 from naver_blog_bot.blog_scraper.adapters.naver import (
     collect_blog_post_urls,
     collect_post_urls,
@@ -203,6 +204,92 @@ def test_collect_blog_post_urls_raises_when_empty() -> None:
             collect_blog_post_urls(FakePage(), "https://blog.naver.com/myid", count=5)
         )
     assert goto_kwargs.get("wait_until") == "networkidle"
+
+
+def test_select_post_hrefs_extracts_unique_posts() -> None:
+    hrefs = [
+        "https://m.blog.naver.com/foo/100",
+        "https://m.blog.naver.com/foo/100",
+        "https://m.blog.naver.com/foo/200",
+        "https://example.com/other",
+        "",
+    ]
+    urls = naver._select_post_hrefs(hrefs, "https://m.blog.naver.com/foo", 5)
+    assert urls == [
+        "https://m.blog.naver.com/foo/100",
+        "https://m.blog.naver.com/foo/200",
+    ]
+
+
+def test_select_post_hrefs_respects_count() -> None:
+    hrefs = [
+        "https://m.blog.naver.com/foo/1",
+        "https://m.blog.naver.com/foo/2",
+        "https://m.blog.naver.com/foo/3",
+    ]
+    urls = naver._select_post_hrefs(hrefs, "https://m.blog.naver.com/foo", 2)
+    assert urls == [
+        "https://m.blog.naver.com/foo/1",
+        "https://m.blog.naver.com/foo/2",
+    ]
+
+
+def test_post_list_url_preserves_category_no() -> None:
+    url = naver.post_list_url("https://blog.naver.com/foo?categoryNo=7")
+    assert "blogId=foo" in url
+    assert "categoryNo=7" in url
+
+
+def test_post_list_url_without_category_has_no_category_param() -> None:
+    url = naver.post_list_url("https://blog.naver.com/foo")
+    assert "categoryNo" not in url
+
+
+def test_is_blog_url_detects_category_home() -> None:
+    assert naver.is_blog_url("https://blog.naver.com/foo?categoryNo=7") is True
+
+
+def test_select_post_hrefs_extracts_unique_posts() -> None:
+    hrefs = [
+        "https://m.blog.naver.com/foo/100",
+        "https://m.blog.naver.com/foo/100",
+        "https://m.blog.naver.com/foo/200",
+        "https://example.com/other",
+        "",
+    ]
+    urls = naver._select_post_hrefs(hrefs, "https://m.blog.naver.com/foo", 5)
+    assert urls == [
+        "https://m.blog.naver.com/foo/100",
+        "https://m.blog.naver.com/foo/200",
+    ]
+
+
+def test_select_post_hrefs_respects_count() -> None:
+    hrefs = [
+        "https://m.blog.naver.com/foo/1",
+        "https://m.blog.naver.com/foo/2",
+        "https://m.blog.naver.com/foo/3",
+    ]
+    urls = naver._select_post_hrefs(hrefs, "https://m.blog.naver.com/foo", 2)
+    assert urls == [
+        "https://m.blog.naver.com/foo/1",
+        "https://m.blog.naver.com/foo/2",
+    ]
+
+
+def test_post_list_url_preserves_category_no() -> None:
+    url = naver.post_list_url("https://blog.naver.com/foo?categoryNo=7")
+    assert "blogId=foo" in url
+    assert "categoryNo=7" in url
+
+
+def test_post_list_url_without_category_has_no_category_param() -> None:
+    url = naver.post_list_url("https://blog.naver.com/foo")
+    assert "categoryNo" not in url
+
+
+def test_is_blog_url_detects_category_home() -> None:
+    assert naver.is_blog_url("https://blog.naver.com/foo?categoryNo=7") is True
 
 
 def test_scrape_post_calls_goto_with_networkidle() -> None:

@@ -47,8 +47,12 @@ def post_list_url(url: str) -> str:
     path = parsed.path.rstrip("/")
     segments = [s for s in path.split("/") if s]
     blog_id = segments[0] if segments else ""
-    query = urlencode({"blogId": blog_id, "currentPage": 1})
-    result = parsed._replace(path="/PostList.naver", query=query, fragment="")
+    existing = parse_qs(parsed.query)
+    query: dict[str, object] = {"blogId": blog_id, "currentPage": 1}
+    category = existing.get("categoryNo")
+    if category and category[0]:
+        query["categoryNo"] = category[0]
+    result = parsed._replace(path="/PostList.naver", query=urlencode(query), fragment="")
     return urlunparse(result)
 
 
@@ -192,6 +196,22 @@ def _resolve_post_url(href: str, base_url: str) -> str | None:
         return None
 
     return None
+
+
+def _select_post_hrefs(hrefs: list[str], base_url: str, count: int) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for href in hrefs:
+        if len(result) >= count:
+            break
+        cleaned = (href or "").strip()
+        if not cleaned:
+            continue
+        resolved = _resolve_post_url(cleaned, base_url)
+        if resolved and resolved not in seen:
+            seen.add(resolved)
+            result.append(resolved)
+    return result
 
 
 def collect_post_urls(html: str, base_url: str, count: int) -> list[str]:
