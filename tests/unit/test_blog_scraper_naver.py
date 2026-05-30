@@ -9,7 +9,6 @@ from naver_blog_bot.blog_scraper.adapters.naver import (
     is_emoticon_img_attrs,
     normalize_naver_url,
     parse_post_html,
-    post_list_url,
     scrape_post,
 )
 from naver_blog_bot.blog_scraper.models import EmoticonBlock, ImageBlock, TextBlock
@@ -72,10 +71,10 @@ def test_is_blog_url_distinguishes_blog_index_from_post() -> None:
     )
 
 
-def test_post_list_url_builds_mobile_post_list_url() -> None:
+def test_post_list_url_builds_mobile_blog_home() -> None:
     assert (
-        post_list_url("https://blog.naver.com/myid")
-        == "https://m.blog.naver.com/PostList.naver?blogId=myid&currentPage=1"
+        naver.post_list_url("https://blog.naver.com/myid")
+        == "https://m.blog.naver.com/myid"
     )
 
 
@@ -156,6 +155,9 @@ def test_collect_blog_post_urls_uses_live_dom() -> None:
         async def wait_for_selector(self, selector: str, **kwargs: object) -> None:
             return None
 
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
         async def eval_on_selector_all(self, selector: str, script: str) -> list[str]:
             return [
                 "https://m.blog.naver.com/foo/100",
@@ -170,7 +172,7 @@ def test_collect_blog_post_urls_uses_live_dom() -> None:
         "https://m.blog.naver.com/foo/100",
         "https://m.blog.naver.com/foo/200",
     ]
-    assert page.goto_url is not None and "PostList.naver" in page.goto_url
+    assert page.goto_url == "https://m.blog.naver.com/foo"
 
 
 def test_collect_blog_post_urls_raises_when_no_posts() -> None:
@@ -179,6 +181,9 @@ def test_collect_blog_post_urls_raises_when_no_posts() -> None:
             return None
 
         async def wait_for_selector(self, selector: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
             return None
 
         async def eval_on_selector_all(self, selector: str, script: str) -> list[str]:
@@ -218,8 +223,7 @@ def test_select_post_hrefs_respects_count() -> None:
 
 def test_post_list_url_preserves_category_no() -> None:
     url = naver.post_list_url("https://blog.naver.com/foo?categoryNo=7")
-    assert "blogId=foo" in url
-    assert "categoryNo=7" in url
+    assert url == "https://m.blog.naver.com/foo?categoryNo=7"
 
 
 def test_post_list_url_without_category_has_no_category_param() -> None:

@@ -48,11 +48,11 @@ def post_list_url(url: str) -> str:
     segments = [s for s in path.split("/") if s]
     blog_id = segments[0] if segments else ""
     existing = parse_qs(parsed.query)
-    query: dict[str, object] = {"blogId": blog_id, "currentPage": 1}
+    query: dict[str, object] = {}
     category = existing.get("categoryNo")
     if category and category[0]:
         query["categoryNo"] = category[0]
-    result = parsed._replace(path="/PostList.naver", query=urlencode(query), fragment="")
+    result = parsed._replace(path=f"/{blog_id}", query=urlencode(query), fragment="")
     return urlunparse(result)
 
 
@@ -224,14 +224,15 @@ async def scrape_post(page: object, url: str) -> PostDocument:
 async def collect_blog_post_urls(page: object, url: str, count: int) -> list[str]:
     list_url = post_list_url(url)
     await page.goto(list_url, wait_until="networkidle")  # type: ignore[attr-defined]
-    try:
-        await page.wait_for_selector("a", timeout=8000)  # type: ignore[attr-defined]
-    except Exception:
-        pass
-    hrefs: list[str] = await page.eval_on_selector_all(  # type: ignore[attr-defined]
-        "a", "els => els.map(e => e.href).filter(Boolean)"
-    )
-    urls = _select_post_hrefs(hrefs, list_url, count)
+    urls: list[str] = []
+    for _ in range(5):
+        hrefs: list[str] = await page.eval_on_selector_all(  # type: ignore[attr-defined]
+            "a", "els => els.map(e => e.href).filter(Boolean)"
+        )
+        urls = _select_post_hrefs(hrefs, list_url, count)
+        if urls:
+            break
+        await page.wait_for_timeout(1000)  # type: ignore[attr-defined]
     if not urls:
         raise ValueError(f"no posts found at {url}")
     return urls
