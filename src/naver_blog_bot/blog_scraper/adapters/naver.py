@@ -214,25 +214,6 @@ def _select_post_hrefs(hrefs: list[str], base_url: str, count: int) -> list[str]
     return result
 
 
-def collect_post_urls(html: str, base_url: str, count: int) -> list[str]:
-    root = parse_html(html)
-    seen: set[str] = set()
-    result: list[str] = []
-
-    for a in select_all(root, "a"):
-        if len(result) >= count:
-            break
-        href = a.attrs.get("href", "").strip()
-        if not href:
-            continue
-        resolved = _resolve_post_url(href, base_url)
-        if resolved and resolved not in seen:
-            seen.add(resolved)
-            result.append(resolved)
-
-    return result
-
-
 async def scrape_post(page: object, url: str) -> PostDocument:
     mobile_url = normalize_naver_url(url)
     await page.goto(mobile_url, wait_until="networkidle")  # type: ignore[attr-defined]
@@ -243,8 +224,14 @@ async def scrape_post(page: object, url: str) -> PostDocument:
 async def collect_blog_post_urls(page: object, url: str, count: int) -> list[str]:
     list_url = post_list_url(url)
     await page.goto(list_url, wait_until="networkidle")  # type: ignore[attr-defined]
-    html: str = await page.content()  # type: ignore[attr-defined]
-    urls = collect_post_urls(html, list_url, count)
+    try:
+        await page.wait_for_selector("a", timeout=8000)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    hrefs: list[str] = await page.eval_on_selector_all(  # type: ignore[attr-defined]
+        "a", "els => els.map(e => e.href).filter(Boolean)"
+    )
+    urls = _select_post_hrefs(hrefs, list_url, count)
     if not urls:
         raise ValueError(f"no posts found at {url}")
     return urls

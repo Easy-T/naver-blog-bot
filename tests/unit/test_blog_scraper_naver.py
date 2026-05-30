@@ -5,7 +5,6 @@ import pytest
 from naver_blog_bot.blog_scraper.adapters import naver
 from naver_blog_bot.blog_scraper.adapters.naver import (
     collect_blog_post_urls,
-    collect_post_urls,
     is_blog_url,
     is_emoticon_img_attrs,
     normalize_naver_url,
@@ -43,16 +42,6 @@ NAVER_LEGACY_HTML = """
   </div>
 </body>
 </html>
-"""
-
-
-POST_LIST_HTML = """
-<html><body>
-  <a href="/myid/223456789">첫 번째 글</a>
-  <a href="https://m.blog.naver.com/myid/223456790">두 번째 글</a>
-  <a href="/PostView.naver?blogId=myid&logNo=223456791">세 번째 글</a>
-  <a href="/myid/category">카테고리</a>
-</body></html>
 """
 
 
@@ -139,39 +128,6 @@ def test_emoticon_detection_uses_url_patterns_and_css_keywords() -> None:
     )
 
 
-def test_collect_post_urls_from_mobile_post_list() -> None:
-    urls = collect_post_urls(
-        POST_LIST_HTML,
-        "https://m.blog.naver.com/PostList.naver?blogId=myid&currentPage=1",
-        count=2,
-    )
-
-    assert urls == [
-        "https://m.blog.naver.com/myid/223456789",
-        "https://m.blog.naver.com/myid/223456790",
-    ]
-
-
-def test_collect_post_urls_canonicalizes_relative_post_view_link() -> None:
-    html = "<html><body><a href='/PostView.naver?blogId=myid&logNo=223456791'>글</a></body></html>"
-    urls = collect_post_urls(
-        html,
-        "https://m.blog.naver.com/PostList.naver?blogId=myid&currentPage=1",
-        count=5,
-    )
-    assert urls == ["https://m.blog.naver.com/myid/223456791"]
-
-
-def test_collect_post_urls_canonicalizes_pc_absolute_link() -> None:
-    html = "<html><body><a href='https://blog.naver.com/myid/223456792'>글</a></body></html>"
-    urls = collect_post_urls(
-        html,
-        "https://m.blog.naver.com/PostList.naver?blogId=myid&currentPage=1",
-        count=5,
-    )
-    assert urls == ["https://m.blog.naver.com/myid/223456792"]
-
-
 def test_parse_post_html_raises_on_unsupported_structure() -> None:
     html = "<html><body><div>no known containers here</div></body></html>"
     with pytest.raises(ValueError, match="unsupported Naver post structure"):
@@ -189,64 +145,47 @@ def test_is_emoticon_img_attrs_case_insensitive() -> None:
     )
 
 
-def test_collect_blog_post_urls_raises_when_empty() -> None:
-    goto_kwargs: dict[str, object] = {}
-
+def test_collect_blog_post_urls_uses_live_dom() -> None:
     class FakePage:
+        def __init__(self) -> None:
+            self.goto_url: str | None = None
+
         async def goto(self, url: str, **kwargs: object) -> None:
-            goto_kwargs.update(kwargs)
+            self.goto_url = url
 
-        async def content(self) -> str:
-            return "<html><body><a href='/myid/category'>cat</a></body></html>"
+        async def wait_for_selector(self, selector: str, **kwargs: object) -> None:
+            return None
 
-    with pytest.raises(ValueError, match="no posts found at"):
-        asyncio.run(
-            collect_blog_post_urls(FakePage(), "https://blog.naver.com/myid", count=5)
-        )
-    assert goto_kwargs.get("wait_until") == "networkidle"
+        async def eval_on_selector_all(self, selector: str, script: str) -> list[str]:
+            return [
+                "https://m.blog.naver.com/foo/100",
+                "https://m.blog.naver.com/foo/100",
+                "https://m.blog.naver.com/foo/200",
+                "https://example.com/other",
+            ]
 
-
-def test_select_post_hrefs_extracts_unique_posts() -> None:
-    hrefs = [
-        "https://m.blog.naver.com/foo/100",
-        "https://m.blog.naver.com/foo/100",
-        "https://m.blog.naver.com/foo/200",
-        "https://example.com/other",
-        "",
-    ]
-    urls = naver._select_post_hrefs(hrefs, "https://m.blog.naver.com/foo", 5)
+    page = FakePage()
+    urls = asyncio.run(collect_blog_post_urls(page, "https://blog.naver.com/foo", 5))
     assert urls == [
         "https://m.blog.naver.com/foo/100",
         "https://m.blog.naver.com/foo/200",
     ]
+    assert page.goto_url is not None and "PostList.naver" in page.goto_url
 
 
-def test_select_post_hrefs_respects_count() -> None:
-    hrefs = [
-        "https://m.blog.naver.com/foo/1",
-        "https://m.blog.naver.com/foo/2",
-        "https://m.blog.naver.com/foo/3",
-    ]
-    urls = naver._select_post_hrefs(hrefs, "https://m.blog.naver.com/foo", 2)
-    assert urls == [
-        "https://m.blog.naver.com/foo/1",
-        "https://m.blog.naver.com/foo/2",
-    ]
+def test_collect_blog_post_urls_raises_when_no_posts() -> None:
+    class EmptyPage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
 
+        async def wait_for_selector(self, selector: str, **kwargs: object) -> None:
+            return None
 
-def test_post_list_url_preserves_category_no() -> None:
-    url = naver.post_list_url("https://blog.naver.com/foo?categoryNo=7")
-    assert "blogId=foo" in url
-    assert "categoryNo=7" in url
+        async def eval_on_selector_all(self, selector: str, script: str) -> list[str]:
+            return ["https://example.com/other"]
 
-
-def test_post_list_url_without_category_has_no_category_param() -> None:
-    url = naver.post_list_url("https://blog.naver.com/foo")
-    assert "categoryNo" not in url
-
-
-def test_is_blog_url_detects_category_home() -> None:
-    assert naver.is_blog_url("https://blog.naver.com/foo?categoryNo=7") is True
+    with pytest.raises(ValueError, match="no posts found"):
+        asyncio.run(collect_blog_post_urls(EmptyPage(), "https://blog.naver.com/foo", 5))
 
 
 def test_select_post_hrefs_extracts_unique_posts() -> None:
