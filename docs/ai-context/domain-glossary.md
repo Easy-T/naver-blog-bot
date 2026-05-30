@@ -18,12 +18,12 @@
 | 구조화 샘플 텍스트 | `PostDocument.to_structured_text()` | URL 스크래핑 결과를 `[이미지]`, `[이모티콘:설명]` 마커가 포함된 문체 학습 입력으로 변환 |
 | 이모티콘 마커 | `{{이모티콘:감정유형}}`, `PostGenerator.generate()` | 초안 본문에서 향후 발행 단계가 실제 OGQ 스티커로 치환할 이모티콘 삽입 의도 표시 |
 
-| 예시 포스트 | `style_profiler/examples.py` (예정), `config/style_profiles/<name>-examples.json` | `profile-refresh` 시 스크래핑한 실제 포스트 원문(최대 3개). `draft` 시 few-shot으로 Claude에 주입해 문체 재현 품질 향상 |
-| 짤방 등록 | `meme_add_command()` (예정), `MemeAsset` | `meme-add <URL-또는-파일>` 명령으로 이미지를 `assets/memes/`에 저장하고 Claude Vision으로 tags·use_cases 자동 생성 |
-| 짤방 검색 | `MemeSearchService` (예정) | `draft` 생성 중 `claude -p` 웹서치로 인터넷에서 문맥에 맞는 후보 이미지 URL 검색. 별도 이미지 API 키 불필요 |
-| 문맥 기반 짤방 배치 | `MemeIndex.candidates_for_draft()` (예정) | 메모 키워드 단순 매칭(`candidates_for_memo`) 대신 생성된 초안 전체를 Claude가 분석해 각 문단에 적합한 짤방 배치 |
-| 브라우저 미리보기 | `preview_command()` (갱신 예정) | `preview` 명령이 생성하는 로컬 HTML 파일. 자동으로 브라우저가 열리고 네이버 블로그 유사 레이아웃으로 렌더링 |
-| 클립보드 복사 | `copy_command()` (예정) | 초안 내용을 클립보드에 복사. 네이버 SmartEditor에 수동 붙여넣기 위해 사용 |
+| 예시 포스트 | `ExamplePost`, `FewShotRepository`, `style_profiler/examples.py`, `config/style_profiles/<name>-examples.json` | `profile-refresh` 시 스크래핑한 실제 포스트 원문(최대 3개). `draft` 시 few-shot으로 Claude에 주입해 문체 재현 품질 향상 |
+| 짤방 등록 | `meme_add_command()`, `tag_meme_image()`, `add_or_update_meme()`, `MemeAsset` | `meme-add <파일>` 또는 `meme-fetch <URL>` 명령으로 이미지를 `assets/memes/`에 저장하고 Claude Vision으로 tags·use_cases 자동 생성 |
+| 짤방 검색 | `meme_fetch_command()` | `meme-fetch <URL>` 명령으로 URL에서 이미지를 다운로드해 짤방 라이브러리에 등록 |
+| 문맥 기반 짤방 배치 | `PostGenerator._place_memes_in_draft()` | 메모 키워드 단순 매칭 대신 생성된 초안 전체를 Claude가 분석해 각 문단에 적합한 `[짤방: id]` 마커 삽입 |
+| 브라우저 미리보기 | `preview_command()`, `Draft.to_html()` | `preview` 명령이 생성하는 로컬 HTML 파일. 자동으로 브라우저가 열리고 네이버 블로그 유사 레이아웃으로 렌더링 |
+| 클립보드 복사 | `preview_command()` + `pyperclip` | `preview` 실행 시 초안 본문을 클립보드에 자동 복사. 네이버 SmartEditor에 수동 붙여넣기 위해 사용 |
 
 ## Identical-Looking, Different Meaning
 

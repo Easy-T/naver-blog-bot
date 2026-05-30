@@ -24,6 +24,14 @@ graph TD
   blog_scraper --> scraper_adapters["blog_scraper/adapters"]
   blog_scraper --> scraper_models["blog_scraper/models.py"]
   scraper_adapters --> scraper_models
+  protocols["shared/protocols.py"]
+  post_generator --> protocols
+  refresh --> protocols
+  shared_claude --> protocols
+  examples["style_profiler/examples.py"]
+  post_generator --> examples
+  cli --> examples
+  style_profiler --> examples
 ```
 
 > 갱신 정책: 모듈 추가/삭제/의존성 변경 시 review-strict가 갱신.
