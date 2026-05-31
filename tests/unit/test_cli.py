@@ -571,3 +571,34 @@ def test_meme_fetch_downloads_image_and_tags(monkeypatch, tmp_path: Path) -> Non
     meme_files = list(settings.memes_dir.iterdir())
     assert len(meme_files) == 1
     assert meme_files[0].suffix == ".jpg"
+
+
+def test_meme_add_copies_into_memes_dir(monkeypatch, tmp_path: Path) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    from naver_blog_bot.config import Settings, ensure_local_directories
+
+    settings = Settings()
+    ensure_local_directories(settings)
+
+    src = tmp_path / "outside" / "happy.png"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+
+    class FakeTagger:
+        def complete_vision(self, *, image_path, prompt):
+            assert str(image_path).startswith(str(settings.memes_dir))
+            return '{"tags": ["기쁨"], "use_cases": ["마무리"], "alt_text": "웃음"}'
+
+    monkeypatch.setattr(cli, "build_text_completer", lambda s: FakeTagger())
+
+    result = runner.invoke(cli.app, ["meme-add", str(src)])
+    assert result.exit_code == 0, result.stdout
+
+    copied = settings.memes_dir / "happy.png"
+    assert copied.exists()
+
+    from naver_blog_bot.meme_library.service import load_meme_index
+
+    index = load_meme_index(settings.meme_index_path)
+    assert len(index.memes) == 1
+    assert str(index.memes[0].path).startswith(str(settings.memes_dir))

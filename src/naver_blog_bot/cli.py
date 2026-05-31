@@ -17,6 +17,7 @@ from naver_blog_bot.blog_scraper.service import scrape as scrape_source
 from naver_blog_bot.config import Settings, ensure_local_directories, get_settings
 from naver_blog_bot.meme_library.service import (
     add_or_update_meme,
+    ensure_in_memes_dir,
     load_meme_index,
     save_meme_index,
     tag_meme_image,
@@ -257,15 +258,17 @@ def meme_add_command(
         typer.echo(f"Error: file not found: {image_path}")
         raise typer.Exit(1)
     settings = get_settings()
+    ensure_local_directories(settings)
+    dest = ensure_in_memes_dir(image_path, settings.memes_dir)
     try:
-        asset = tag_meme_image(image_path, build_text_completer(settings))
+        asset = tag_meme_image(dest, build_text_completer(settings))
     except (ClaudeBackendError, ValueError) as exc:
         typer.echo(f"Error: {exc}")
         raise typer.Exit(1)
     index = load_meme_index(settings.meme_index_path)
     updated = add_or_update_meme(index, asset)
     save_meme_index(settings.meme_index_path, updated)
-    typer.echo(f"Added: {image_path.name} (tags: {', '.join(asset.tags)})")
+    typer.echo(f"Added: {dest.name} (tags: {', '.join(asset.tags)})")
 
 
 @app.command("meme-build")
@@ -276,10 +279,12 @@ def meme_build_command() -> None:
     existing_ids = {m.id for m in index.memes}
     extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
     new_count = 0
+    skipped = 0
     for image_path in sorted(settings.memes_dir.iterdir()):
         if image_path.suffix.lower() not in extensions:
             continue
         if image_path.stem in existing_ids:
+            skipped += 1
             continue
         try:
             asset = tag_meme_image(image_path, build_text_completer(settings))
@@ -289,8 +294,7 @@ def meme_build_command() -> None:
         except (ClaudeBackendError, ValueError) as exc:
             typer.echo(f"Skipped {image_path.name}: {exc}")
     save_meme_index(settings.meme_index_path, index)
-    skipped = len(existing_ids)
-    typer.echo(f"Done: {new_count} new image(s) tagged, {skipped} existing skipped.")
+    typer.echo(f"Done: {new_count} new image(s) tagged, {skipped} already indexed.")
 
 
 @app.command("meme-fetch")
