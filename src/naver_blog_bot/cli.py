@@ -1,3 +1,4 @@
+import subprocess
 import webbrowser
 from pathlib import Path
 from typing import Annotated
@@ -219,6 +220,21 @@ def draft_command(
     typer.echo(f"Draft saved: {draft.id}")
 
 
+def _open_in_browser(html_path: Path) -> None:
+    """Open the preview HTML, tolerating WSL (no GUI browser)."""
+    try:
+        is_wsl = "microsoft" in Path("/proc/version").read_text().lower()
+    except OSError:
+        is_wsl = False
+    try:
+        if is_wsl:
+            subprocess.run(["explorer.exe", str(html_path)], check=False)
+        else:
+            webbrowser.open(html_path.as_uri())
+    except Exception:
+        pass
+
+
 @app.command("preview")
 def preview_command(
     draft_id: Annotated[str, typer.Argument(help="Draft ID to preview.")],
@@ -230,9 +246,12 @@ def preview_command(
         typer.echo(f"Draft not found: {draft_id}")
         raise typer.Exit(1)
 
+    meme_paths = {
+        meme.id: meme.path for meme in load_meme_index(settings.meme_index_path).memes
+    }
     html_path = settings.drafts_dir / f"{draft_id}.html"
-    html_path.write_text(draft.to_html(), encoding="utf-8")
-    webbrowser.open(html_path.as_uri())
+    html_path.write_text(draft.to_html(meme_paths), encoding="utf-8")
+    _open_in_browser(html_path)
 
     if _PYPERCLIP_AVAILABLE:
         try:

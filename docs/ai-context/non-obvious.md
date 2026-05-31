@@ -52,3 +52,17 @@
 
 ---
 Last updated: 2026-05-08
+
+---
+
+## NOBV-002: 검증 게이트의 `&&` 체인이 false-green을 만든다
+
+- **발생**: cli.py/models.py 변경 후 `bash scripts/check.sh`가 RC 0("== check complete ==")을 냈지만, 실제로는 ruff format 실패로 **pytest가 실행조차 안 됐고** 전체 스위트엔 1개 실패 + 신규 기능 테스트 0개가 숨어 있었다. closeout review-strict가 적발.
+- **근인 (5 Whys)**:
+  1. 왜 false-green? → check.sh가 RC 0을 반환했지만 pytest는 돌지 않았다.
+  2. 왜 pytest가 안 돌았나? → `ruff check && ruff format --check && pytest` 한 줄에서 format이 실패해 단락(short-circuit)됐다.
+  3. 왜 단락이 스크립트를 멈추지 않았나? → `set -e`는 `&&` 리스트의 **마지막이 아닌** 명령 실패에는 종료하지 않는다(bash 사양).
+  4. 왜 그렇게 작성됐나? → 한 줄 `&&` 체인이 간결해 보였고 단계 분리의 필요가 인지되지 않았다.
+  5. (시스템 근본) 왜 게이트 자체의 정확성이 검증되지 않았나? → "게이트가 실패를 실제로 잡는가"를 확인하는 메타 점검 관행이 없었다.
+- **교훈**: 검증 게이트는 각 명령을 개별 문장으로 두어 `set -e`가 모든 실패를 잡게 한다. green일 때도 단계별 출력(특히 "N passed")을 눈으로 확인한다. 함께 드러난 자매 패턴 — 단위 테스트가 placeholder 문자열만 단언해 실제 이미지 렌더링 커버리지가 0이었음 → 기능 추가 시 TDD(실패 테스트 선작성)를 건너뛰지 않는다.
+- **Action (SMART)**: scripts/check.sh를 단계별 개별 명령 + 단계 echo로 분리(완료, cycle 11). 이후 closeout 시 pytest 단계의 "passed" 토큰을 명시적으로 확인한다.

@@ -3,9 +3,9 @@
   "project_name": "naver-blog-bot",
   "created_at": "2026-05-02",
   "cycle": {
-    "count": 10,
-    "last_completed_at": "2026-05-31",
-    "last_cycle_id": "2026-05-31-meme-storage-correctness"
+    "count": 11,
+    "last_completed_at": "2026-06-01",
+    "last_cycle_id": "2026-05-31-preview-image-rendering"
   },
   "features": {
     "v2_enabled": false,
@@ -16,12 +16,12 @@
     "v3_skipped_permanently": false
   },
   "non_obvious": {
-    "active_count": 1,
+    "active_count": 2,
     "archive_count": 0,
     "last_archived_at": null
   },
   "audit": {
     "last_doctor_run": "2026-05-03",
-    "last_drift_check": "2026-05-31"
+    "last_drift_check": "2026-06-01"
   }
 }

@@ -1,7 +1,14 @@
+import base64
 from datetime import datetime, timezone
 from pathlib import Path
 
 from naver_blog_bot.post_generator.models import Draft
+
+# 1x1 PNG
+_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+    "+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+)
 
 
 def _make_draft(body: str) -> Draft:
@@ -23,9 +30,10 @@ def test_to_html_contains_title() -> None:
 
 
 def test_to_html_renders_photo_placeholder() -> None:
+    # Non-existent path -> placeholder div (back-compat).
     draft = _make_draft("[사진: photos/a.jpg]")
     html = draft.to_html()
-    assert "photo-placeholder" in html
+    assert '<div class="photo-placeholder">' in html
     assert "photos/a.jpg" in html
 
 
@@ -39,7 +47,7 @@ def test_to_html_renders_emoticon_badge() -> None:
 def test_to_html_renders_meme_placeholder() -> None:
     draft = _make_draft("[짤방: satisfied]")
     html = draft.to_html()
-    assert "meme-placeholder" in html
+    assert '<div class="meme-placeholder">' in html
     assert "satisfied" in html
 
 
@@ -57,3 +65,54 @@ def test_to_html_is_valid_html_structure() -> None:
     assert html.startswith("<!DOCTYPE html>")
     assert '<html lang="ko">' in html
     assert "</html>" in html
+
+
+# --- Cycle 11: base64 image rendering ---
+# Note: the CSS block always defines `.photo-placeholder`/`.meme-placeholder`,
+# so distinguish a real render from a placeholder by the `<div class=...>` tag,
+# not by the bare class name.
+
+
+def test_to_html_embeds_real_photo_as_base64(tmp_path: Path) -> None:
+    img = tmp_path / "a.png"
+    img.write_bytes(_PNG)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    assert '<img class="photo"' in html
+    assert "data:image/png;base64," in html
+    assert '<div class="photo-placeholder">' not in html
+
+
+def test_to_html_missing_photo_keeps_placeholder() -> None:
+    html = _make_draft("[사진: /definitely/not/here.jpg]").to_html()
+    assert '<div class="photo-placeholder">' in html
+    assert '<img class="photo"' not in html
+
+
+def test_to_html_embeds_meme_via_meme_paths(tmp_path: Path) -> None:
+    meme = tmp_path / "m.png"
+    meme.write_bytes(_PNG)
+    html = _make_draft("[짤방: m1]").to_html({"m1": meme})
+    assert '<img class="meme"' in html
+    assert "data:image/png;base64," in html
+    assert '<div class="meme-placeholder">' not in html
+
+
+def test_to_html_unknown_meme_id_keeps_placeholder(tmp_path: Path) -> None:
+    meme = tmp_path / "m.png"
+    meme.write_bytes(_PNG)
+    html = _make_draft("[짤방: nope]").to_html({"m1": meme})
+    assert '<div class="meme-placeholder">' in html
+    assert '<img class="meme"' not in html
+
+
+def test_to_html_jpeg_mime(tmp_path: Path) -> None:
+    img = tmp_path / "a.jpg"
+    img.write_bytes(_PNG)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    assert "data:image/jpeg;base64," in html
+
+
+def test_to_html_no_arg_keeps_placeholders_backcompat() -> None:
+    html = _make_draft("[사진: /x/a.jpg]\n[짤방: meme_smile]").to_html()
+    assert '<div class="photo-placeholder">' in html
+    assert '<div class="meme-placeholder">' in html

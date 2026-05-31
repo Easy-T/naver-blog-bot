@@ -257,7 +257,9 @@ def test_ensure_in_memes_dir_suffixes_on_name_clash(tmp_path: Path) -> None:
 def test_extract_meme_json_handles_code_fence() -> None:
     from naver_blog_bot.meme_library.service import _extract_meme_json
 
-    raw = '```json\n{"tags": ["기쁨"], "use_cases": ["마무리"], "alt_text": "웃음"}\n```'
+    raw = (
+        '```json\n{"tags": ["기쁨"], "use_cases": ["마무리"], "alt_text": "웃음"}\n```'
+    )
     data = _extract_meme_json(raw)
     assert data["tags"] == ["기쁨"]
 

@@ -51,9 +51,7 @@ def _extract_meme_json(raw: str) -> dict:
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"Vision client returned invalid JSON: {raw[:100]}"
-        ) from exc
+        raise ValueError(f"Vision client returned invalid JSON: {raw[:100]}") from exc
     if not isinstance(data, dict):
         raise ValueError(f"Vision client returned invalid JSON: {raw[:100]}")
     return data

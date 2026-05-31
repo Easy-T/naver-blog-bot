@@ -1,9 +1,28 @@
+import base64
 import html as _html
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+_MIME_BY_SUFFIX = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
+
+def _image_data_uri(path: Path) -> str | None:
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    mime = _MIME_BY_SUFFIX.get(path.suffix.lower(), "image/jpeg")
+    encoded = base64.b64encode(raw).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
 
 
 class Draft(BaseModel):
@@ -32,7 +51,8 @@ class Draft(BaseModel):
             f"{self.body_markdown}\n"
         )
 
-    def to_html(self) -> str:
+    def to_html(self, meme_paths: dict[str, Path] | None = None) -> str:
+        meme_paths = meme_paths or {}
         lines: list[str] = []
         for line in self.body_markdown.splitlines():
             stripped = line.strip()
@@ -41,14 +61,27 @@ class Draft(BaseModel):
                 continue
             if stripped.startswith("[사진:"):
                 path = stripped[4:-1].strip()
-                lines.append(
-                    f'<div class="photo-placeholder">📷 {_html.escape(path)}</div>'
-                )
+                uri = _image_data_uri(Path(path))
+                if uri:
+                    lines.append(
+                        f'<img class="photo" src="{uri}" alt="{_html.escape(path)}">'
+                    )
+                else:
+                    lines.append(
+                        f'<div class="photo-placeholder">📷 {_html.escape(path)}</div>'
+                    )
             elif stripped.startswith("[짤방:"):
                 ref = stripped[4:-1].strip()
-                lines.append(
-                    f'<div class="meme-placeholder">🖼️ 짤방: {_html.escape(ref)}</div>'
-                )
+                target = meme_paths.get(ref)
+                uri = _image_data_uri(Path(target)) if target else None
+                if uri:
+                    lines.append(
+                        f'<img class="meme" src="{uri}" alt="짤방: {_html.escape(ref)}">'
+                    )
+                else:
+                    lines.append(
+                        f'<div class="meme-placeholder">🖼️ 짤방: {_html.escape(ref)}</div>'
+                    )
             elif stripped.startswith("### "):
                 lines.append(f"<h3>{_html.escape(stripped[4:])}</h3>")
             elif stripped.startswith("## "):
@@ -78,6 +111,8 @@ class Draft(BaseModel):
 body{{font-family:'Noto Sans KR',sans-serif;background:#f5f5f5;margin:0;padding:20px}}
 .post{{max-width:720px;margin:0 auto;background:#fff;padding:40px;border-radius:8px}}
 .meta{{color:#888;font-size:13px;margin-bottom:20px;border-bottom:1px solid #eee;padding-bottom:16px}}
+img.photo{{max-width:100%;height:auto;display:block;margin:16px auto;border-radius:6px}}
+img.meme{{max-width:200px;height:auto;display:block;margin:12px auto;border-radius:6px}}
 .photo-placeholder{{background:#e0e0e0;border:2px dashed #bbb;padding:30px;text-align:center;margin:16px 0;border-radius:4px;color:#666}}
 .meme-placeholder{{background:#fff3e0;border:2px dashed #ffb74d;padding:20px;text-align:center;margin:16px 0;border-radius:4px;color:#e65100}}
 .emoticon-badge{{background:#fff9c4;border:1px solid #f9a825;border-radius:12px;padding:2px 8px;font-size:13px}}

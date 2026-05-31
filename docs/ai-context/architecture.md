@@ -120,6 +120,15 @@ graph TD
 - 대안: PC iframe(mainFrame) 파싱(필터 안 됨); 모바일 category-list API(post-list는 403/CSRF); DOM 앵커 필터(불가).
 - 트레이드오프: 비공개 JSON 엔드포인트에 의존하므로 네이버가 응답 형태를 바꾸면 깨질 수 있으나, 카테고리 필터를 실제로 지원하는 유일한 검증된 경로다. 본문은 기존 `scrape_post`가 그대로 처리.
 
+### ADR-007: 미리보기 이미지 base64 인라인 임베드 + WSL 브라우저 열기
+
+- 날짜: 2026-06-01
+- 상태: Accepted
+- 결정: `Draft.to_html(meme_paths=None)`이 `[사진:path]`/`[짤방:id]` 마커를 base64 data URI `<img>`로 인라인 임베드해 self-contained HTML을 만든다. 짤방 id는 호출자(cli `preview`)가 meme_index에서 `{id: path}` 맵을 주입해 해석한다. 파일이 없거나 id가 미상이면 기존 placeholder div로 graceful fallback(인자 없는 호출은 placeholder 유지 = back-compat). `preview`는 `_open_in_browser`로 열되 WSL 감지(`/proc/version`) 시 `explorer.exe`를 쓰고, 어떤 실패에도 throw하지 않아 클립보드 복사는 항상 실행된다.
+- 이유: 기존 `to_html`은 마커를 회색 placeholder div로만 렌더해 윈도우에서 열어도 실제 사진/짤방이 안 보였고(시각 검토 불가), WSL 경로(`/home/...`)는 윈도우 브라우저가 직접 못 읽어 `file://` `<img>`도 불가했다. `webbrowser.open`도 WSL엔 GUI 브라우저가 없어 실패. base64 인라인은 어디서 열어도 보이는, 가장 단순한 경로.
+- 대안: UNC(`//wsl.localhost/...`) 경로로 `<img src>`(WSL이 켜져 있어야만 보임); 사진을 윈도우로 복사 후 상대경로 참조(파일이 흩어짐); 외부 이미지 서버(과함).
+- 트레이드오프: 원본 사진(장당 ~7MB)을 그대로 인코딩해 HTML이 ~103MB로 커진다. 기능은 정상이나 무겁다 → 리사이즈(Pillow)는 후속 사이클 12에서 처리. Draft 모델은 meme_library에 의존하지 않도록 meme_paths를 cli가 주입(디커플링 유지).
+
 <!-- ADR 형식:
 ### ADR-001: <제목>
 - 날짜: YYYY-MM-DD

@@ -208,9 +208,11 @@ def test_build_text_completer_auto_uses_sdk_when_claude_command_missing(
 
 def test_claude_code_vision_client_builds_correct_args(monkeypatch) -> None:
     calls = []
+    inputs = []
 
     def fake_run(args, *, input, capture_output, text, check, timeout):
         calls.append(args)
+        inputs.append(input)
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
@@ -234,8 +236,10 @@ def test_claude_code_vision_client_builds_correct_args(monkeypatch) -> None:
         result
         == '{"tags": ["만족"], "use_cases": ["후기 마무리"], "alt_text": "만족 표정"}'
     )
-    assert "--image" in calls[0]
-    assert "/tmp/test.jpg" in calls[0]
+    # cycle 9: Claude Code CLI has no --image option; the image path is embedded
+    # in the prompt (sent via stdin), so it appears in the input, not in argv.
+    assert "--image" not in calls[0]
+    assert "/tmp/test.jpg" in inputs[0]
 
 
 def test_claude_code_vision_raises_on_failure(monkeypatch) -> None:
