@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -24,12 +25,43 @@ def save_meme_index(path: Path, index: MemeIndex) -> None:
     write_json(path, index.model_dump(mode="json"))
 
 
+def ensure_in_memes_dir(image_path: Path, memes_dir: Path) -> Path:
+    memes_dir.mkdir(parents=True, exist_ok=True)
+    if image_path.parent.resolve() == memes_dir.resolve():
+        return image_path
+    dest = memes_dir / image_path.name
+    counter = 2
+    while dest.exists():
+        dest = memes_dir / f"{image_path.stem}-{counter}{image_path.suffix}"
+        counter += 1
+    shutil.copy2(image_path, dest)
+    return dest
+
+
+def _extract_meme_json(raw: str) -> dict:
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("\n", 1)[-1]
+        if cleaned.rstrip().endswith("```"):
+            cleaned = cleaned.rstrip()[:-3]
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        cleaned = cleaned[start : end + 1]
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Vision client returned invalid JSON: {raw[:100]}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"Vision client returned invalid JSON: {raw[:100]}")
+    return data
+
+
 def tag_meme_image(image_path: Path, vision_client: Any) -> MemeAsset:
     raw = vision_client.complete_vision(image_path=image_path, prompt=_VISION_PROMPT)
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Vision client returned invalid JSON: {raw[:100]}") from exc
+    data = _extract_meme_json(raw)
     return MemeAsset(
         id=image_path.stem,
         path=image_path,

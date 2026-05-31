@@ -212,3 +212,72 @@ def test_tag_meme_image_handles_invalid_json(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Vision"):
         tag_meme_image(image_path, BrokenVision())
+
+
+def test_ensure_in_memes_dir_copies_outside_file(tmp_path: Path) -> None:
+    from naver_blog_bot.meme_library.service import ensure_in_memes_dir
+
+    memes = tmp_path / "memes"
+    src = tmp_path / "src" / "happy.png"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"img")
+
+    dest = ensure_in_memes_dir(src, memes)
+    assert dest == memes / "happy.png"
+    assert dest.read_bytes() == b"img"
+    assert src.exists()
+
+
+def test_ensure_in_memes_dir_keeps_file_already_inside(tmp_path: Path) -> None:
+    from naver_blog_bot.meme_library.service import ensure_in_memes_dir
+
+    memes = tmp_path / "memes"
+    memes.mkdir()
+    f = memes / "inside.png"
+    f.write_bytes(b"x")
+
+    dest = ensure_in_memes_dir(f, memes)
+    assert dest == f
+
+
+def test_ensure_in_memes_dir_suffixes_on_name_clash(tmp_path: Path) -> None:
+    from naver_blog_bot.meme_library.service import ensure_in_memes_dir
+
+    memes = tmp_path / "memes"
+    memes.mkdir()
+    (memes / "dup.png").write_bytes(b"existing")
+    src = tmp_path / "dup.png"
+    src.write_bytes(b"new")
+
+    dest = ensure_in_memes_dir(src, memes)
+    assert dest == memes / "dup-2.png"
+    assert dest.read_bytes() == b"new"
+
+
+def test_extract_meme_json_handles_code_fence() -> None:
+    from naver_blog_bot.meme_library.service import _extract_meme_json
+
+    raw = '```json\n{"tags": ["기쁨"], "use_cases": ["마무리"], "alt_text": "웃음"}\n```'
+    data = _extract_meme_json(raw)
+    assert data["tags"] == ["기쁨"]
+
+
+def test_extract_meme_json_handles_surrounding_prose() -> None:
+    from naver_blog_bot.meme_library.service import _extract_meme_json
+
+    raw = (
+        "다음은 메타데이터입니다:\n"
+        '{"tags": ["놀람"], "use_cases": ["반전"], "alt_text": "놀란 표정"}\n'
+        "참고하세요."
+    )
+    data = _extract_meme_json(raw)
+    assert data["tags"] == ["놀람"]
+
+
+def test_extract_meme_json_raises_on_garbage() -> None:
+    import pytest
+
+    from naver_blog_bot.meme_library.service import _extract_meme_json
+
+    with pytest.raises(ValueError, match="invalid JSON"):
+        _extract_meme_json("이건 JSON이 전혀 아님")
