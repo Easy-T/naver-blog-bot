@@ -25,6 +25,7 @@ Thumbs.db
 
 # naver-blog-bot local state
 config/style_profile.json
+config/style_profiles/
 config/meme_index.json
 assets/memes/
 drafts/
