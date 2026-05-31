@@ -190,7 +190,9 @@ def test_collect_blog_post_urls_raises_when_no_posts() -> None:
             return ["https://example.com/other"]
 
     with pytest.raises(ValueError, match="no posts found"):
-        asyncio.run(collect_blog_post_urls(EmptyPage(), "https://blog.naver.com/foo", 5))
+        asyncio.run(
+            collect_blog_post_urls(EmptyPage(), "https://blog.naver.com/foo", 5)
+        )
 
 
 def test_select_post_hrefs_extracts_unique_posts() -> None:
@@ -354,9 +356,7 @@ def test_collect_blog_post_urls_category_naver_prefix_json() -> None:
             return ')]}\',\n{"postList":[{"logNo":"55"}]}'
 
     urls = asyncio.run(
-        collect_blog_post_urls(
-            CatPage(), "https://blog.naver.com/foo?categoryNo=6", 5
-        )
+        collect_blog_post_urls(CatPage(), "https://blog.naver.com/foo?categoryNo=6", 5)
     )
     assert urls == ["https://m.blog.naver.com/foo/55"]
 
@@ -394,8 +394,8 @@ def test_collect_blog_post_urls_category_handles_invalid_json_escapes() -> None:
                 '{"resultCode":"S","postList":'
                 '[{"logNo":"224291881837","categoryNo":"10"},'
                 '{"logNo":"224141677589","categoryNo":"10"}],'
-                "\"totalCount\":\"5\","
-                "\"pagingHtml\":\"<div class=\\'blog2_paginate\\'>1</div>\"}"
+                '"totalCount":"5",'
+                '"pagingHtml":"<div class=\\\'blog2_paginate\\\'>1</div>"}'
             )
 
     urls = asyncio.run(
