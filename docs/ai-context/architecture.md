@@ -111,6 +111,15 @@ graph TD
 - 대안: PostList.naver 유지(실패); PC iframe(mainFrame) 파싱; headless 자동 로그인; API 키만 사용.
 - 트레이드오프: WSLg 등 디스플레이가 필요하고 1회 수동 로그인 단계가 생기지만, 자동화 탐지·계정 위험을 피하고 공개·비공개 글 모두 학습 가능하게 한다.
 
+### ADR-006: Category filtering via PostTitleListAsync JSON API
+
+- 날짜: 2026-05-31
+- 상태: Accepted
+- 결정: `profile-refresh` URL에 `categoryNo`가 있으면 `collect_blog_post_urls`가 DOM 스크래핑 대신 `blog.naver.com/PostTitleListAsync.naver?blogId=&categoryNo=&countPerPage=30&currentPage=1` JSON API를 `page.evaluate(fetch)`로 호출해 해당 카테고리 글만 수집한다. categoryNo가 없으면 기존 모바일 홈 DOM 경로 유지.
+- 이유: probe 진단 결과 모바일 홈·`PostList.naver`·PC iframe 모두 `categoryNo`를 무시하고 최근 글 전체를 반환(카테고리별 프로필이 같은 데이터로 학습되는 버그). `PostTitleListAsync.naver`만 카테고리를 정확히 필터(맛집=5, 연애=2 검증)하고 JSON `postList[].logNo`를 제공한다.
+- 대안: PC iframe(mainFrame) 파싱(필터 안 됨); 모바일 category-list API(post-list는 403/CSRF); DOM 앵커 필터(불가).
+- 트레이드오프: 비공개 JSON 엔드포인트에 의존하므로 네이버가 응답 형태를 바꾸면 깨질 수 있으나, 카테고리 필터를 실제로 지원하는 유일한 검증된 경로다. 본문은 기존 `scrape_post`가 그대로 처리.
+
 <!-- ADR 형식:
 ### ADR-001: <제목>
 - 날짜: YYYY-MM-DD
