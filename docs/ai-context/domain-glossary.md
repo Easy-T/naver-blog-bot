@@ -19,7 +19,7 @@
 | 이모티콘 마커 | `{{이모티콘:감정유형}}`, `PostGenerator.generate()` | 초안 본문에서 향후 발행 단계가 실제 OGQ 스티커로 치환할 이모티콘 삽입 의도 표시 |
 
 | 예시 포스트 | `ExamplePost`, `FewShotRepository`, `style_profiler/examples.py`, `config/style_profiles/<name>-examples.json` | `profile-refresh` 시 스크래핑한 실제 포스트 원문(최대 3개). `draft` 시 few-shot으로 Claude에 주입해 문체 재현 품질 향상 |
-| 짤방 등록 | `meme_add_command()`, `tag_meme_image()`, `add_or_update_meme()`, `MemeAsset` | `meme-add <파일>` 또는 `meme-fetch <URL>` 명령으로 이미지를 `assets/memes/`에 저장하고 Claude Vision으로 tags·use_cases 자동 생성 |
+| 짤방 등록 | `meme_add_command()`, `tag_meme_image()`, `add_or_update_meme()`, `MemeAsset` | `meme-add <파일>` 또는 `meme-fetch <URL>` 명령으로 이미지를 `assets/memes/`에 저장하고 Claude Vision으로 tags·use_cases 자동 생성. Claude Code 백엔드는 `--image` 옵션이 없으므로 프롬프트에 이미지 절대경로를 임베드해 CLI가 Read 도구로 분석 |
 | 짤방 검색 | `meme_fetch_command()` | `meme-fetch <URL>` 명령으로 URL에서 이미지를 다운로드해 짤방 라이브러리에 등록 |
 | 문맥 기반 짤방 배치 | `PostGenerator._place_memes_in_draft()` | 메모 키워드 단순 매칭 대신 생성된 초안 전체를 Claude가 분석해 각 문단에 적합한 `[짤방: id]` 마커 삽입 |
 | 브라우저 미리보기 | `preview_command()`, `Draft.to_html()` | `preview` 명령이 생성하는 로컬 HTML 파일. 자동으로 브라우저가 열리고 네이버 블로그 유사 레이아웃으로 렌더링 |
