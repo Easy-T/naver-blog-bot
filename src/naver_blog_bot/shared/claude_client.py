@@ -181,6 +181,8 @@ class ClaudeCodeTextClient:
         )
 
     def complete_vision(self, *, image_path: Path, prompt: str) -> str:
+        abs_path = Path(image_path).resolve()
+        full_prompt = f"{prompt}\n\n분석할 이미지 파일 경로: {abs_path}"
         args = [
             self.settings.claude_command,
             "-p",
@@ -188,13 +190,11 @@ class ClaudeCodeTextClient:
             "json",
             "--model",
             self.settings.claude_model,
-            "--image",
-            str(image_path),
         ]
         try:
             result = subprocess.run(
                 args,
-                input=prompt,
+                input=full_prompt,
                 capture_output=True,
                 text=True,
                 check=False,
