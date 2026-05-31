@@ -29,3 +29,6 @@ config/meme_index.json
 assets/memes/
 drafts/
 browser-profile/
+
+# 로컬 시뮬레이션/실습 자료
+sim/
