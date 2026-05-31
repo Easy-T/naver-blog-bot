@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
@@ -214,6 +215,38 @@ def _select_post_hrefs(hrefs: list[str], base_url: str, count: int) -> list[str]
     return result
 
 
+def category_list_api_url(url: str) -> str | None:
+    parsed = urlparse(normalize_naver_url(url))
+    segments = [s for s in parsed.path.split("/") if s]
+    blog_id = segments[0] if segments else ""
+    category = parse_qs(parsed.query).get("categoryNo")
+    if not (category and category[0]):
+        return None
+    query = urlencode(
+        {
+            "blogId": blog_id,
+            "categoryNo": category[0],
+            "countPerPage": 30,
+            "currentPage": 1,
+        }
+    )
+    return f"https://{_PC_HOST}/PostTitleListAsync.naver?{query}"
+
+
+def _select_post_urls_from_titlelist(
+    payload: dict, blog_id: str, count: int
+) -> list[str]:
+    posts = payload.get("postList") or []
+    result: list[str] = []
+    for post in posts:
+        if len(result) >= count:
+            break
+        log_no = post.get("logNo")
+        if log_no:
+            result.append(f"https://{_MOBILE_HOST}/{blog_id}/{log_no}")
+    return result
+
+
 async def scrape_post(page: object, url: str) -> PostDocument:
     mobile_url = normalize_naver_url(url)
     await page.goto(mobile_url, wait_until="networkidle")  # type: ignore[attr-defined]
@@ -222,6 +255,9 @@ async def scrape_post(page: object, url: str) -> PostDocument:
 
 
 async def collect_blog_post_urls(page: object, url: str, count: int) -> list[str]:
+    api_url = category_list_api_url(url)
+    if api_url is not None:
+        return await _collect_category_post_urls(page, url, api_url, count)
     list_url = post_list_url(url)
     await page.goto(list_url, wait_until="networkidle")  # type: ignore[attr-defined]
     urls: list[str] = []
@@ -233,6 +269,40 @@ async def collect_blog_post_urls(page: object, url: str, count: int) -> list[str
         if urls:
             break
         await page.wait_for_timeout(1000)  # type: ignore[attr-defined]
+    if not urls:
+        raise ValueError(f"no posts found at {url}")
+    return urls
+
+
+def _parse_naver_json(raw: str) -> dict:
+    cleaned = raw.strip()
+    if cleaned.startswith(")]}'"):
+        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned[4:]
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Naver category API returned invalid JSON") from exc
+
+
+async def _collect_category_post_urls(
+    page: object, url: str, api_url: str, count: int
+) -> list[str]:
+    parsed = urlparse(normalize_naver_url(url))
+    segments = [s for s in parsed.path.split("/") if s]
+    blog_id = segments[0] if segments else ""
+    # Establish same-origin cookies before fetching the JSON API.
+    await page.goto(  # type: ignore[attr-defined]
+        f"https://{_PC_HOST}/{blog_id}", wait_until="networkidle"
+    )
+    raw: str = await page.evaluate(  # type: ignore[attr-defined]
+        """async (apiUrl) => {
+            const r = await fetch(apiUrl, {headers: {'Accept': 'application/json'}, credentials: 'include'});
+            return await r.text();
+        }""",
+        api_url,
+    )
+    data = _parse_naver_json(raw)
+    urls = _select_post_urls_from_titlelist(data, blog_id, count)
     if not urls:
         raise ValueError(f"no posts found at {url}")
     return urls

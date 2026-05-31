@@ -250,3 +250,131 @@ def test_scrape_post_calls_goto_with_networkidle() -> None:
     assert goto_calls[0][0] == "https://m.blog.naver.com/myid/223456789"
     assert goto_calls[0][1].get("wait_until") == "networkidle"
     assert doc.title == "포포몬 첫 사용 후기"
+
+
+def test_category_list_api_url_with_category() -> None:
+    url = naver.category_list_api_url("https://blog.naver.com/flowerbend?categoryNo=10")
+    assert url is not None
+    assert "PostTitleListAsync.naver" in url
+    assert "blogId=flowerbend" in url
+    assert "categoryNo=10" in url
+
+
+def test_category_list_api_url_without_category_returns_none() -> None:
+    assert naver.category_list_api_url("https://blog.naver.com/flowerbend") is None
+
+
+def test_select_post_urls_from_titlelist_builds_mobile_urls() -> None:
+    payload = {
+        "resultCode": "S",
+        "postList": [
+            {"logNo": "224291881837", "categoryNo": "10"},
+            {"logNo": "224141677589", "categoryNo": "10"},
+        ],
+        "totalCount": "5",
+    }
+    urls = naver._select_post_urls_from_titlelist(payload, "flowerbend", 5)
+    assert urls == [
+        "https://m.blog.naver.com/flowerbend/224291881837",
+        "https://m.blog.naver.com/flowerbend/224141677589",
+    ]
+
+
+def test_select_post_urls_from_titlelist_respects_count() -> None:
+    payload = {
+        "postList": [
+            {"logNo": "1"},
+            {"logNo": "2"},
+            {"logNo": "3"},
+        ]
+    }
+    urls = naver._select_post_urls_from_titlelist(payload, "foo", 2)
+    assert urls == [
+        "https://m.blog.naver.com/foo/1",
+        "https://m.blog.naver.com/foo/2",
+    ]
+
+
+def test_select_post_urls_from_titlelist_empty() -> None:
+    assert naver._select_post_urls_from_titlelist({"postList": []}, "foo", 5) == []
+
+
+def test_collect_blog_post_urls_category_uses_json_api() -> None:
+    import json
+
+    class CatPage:
+        def __init__(self) -> None:
+            self.goto_url: str | None = None
+            self.evaluated: list[str] = []
+
+        async def goto(self, url: str, **kwargs: object) -> None:
+            self.goto_url = url
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def eval_on_selector_all(self, selector: str, script: str) -> list[str]:
+            raise AssertionError("category path must not use DOM anchors")
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            self.evaluated.append(str(arg))
+            return json.dumps(
+                {
+                    "resultCode": "S",
+                    "postList": [
+                        {"logNo": "100", "categoryNo": "10"},
+                        {"logNo": "200", "categoryNo": "10"},
+                    ],
+                    "totalCount": "2",
+                }
+            )
+
+    page = CatPage()
+    urls = asyncio.run(
+        collect_blog_post_urls(
+            page, "https://blog.naver.com/flowerbend?categoryNo=10", 5
+        )
+    )
+    assert urls == [
+        "https://m.blog.naver.com/flowerbend/100",
+        "https://m.blog.naver.com/flowerbend/200",
+    ]
+    assert any("PostTitleListAsync.naver" in e for e in page.evaluated)
+
+
+def test_collect_blog_post_urls_category_naver_prefix_json() -> None:
+    class CatPage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            return ')]}\',\n{"postList":[{"logNo":"55"}]}'
+
+    urls = asyncio.run(
+        collect_blog_post_urls(
+            CatPage(), "https://blog.naver.com/foo?categoryNo=6", 5
+        )
+    )
+    assert urls == ["https://m.blog.naver.com/foo/55"]
+
+
+def test_collect_blog_post_urls_category_raises_when_empty() -> None:
+    class CatPage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            return '{"postList":[]}'
+
+    with pytest.raises(ValueError, match="no posts found"):
+        asyncio.run(
+            collect_blog_post_urls(
+                CatPage(), "https://blog.naver.com/foo?categoryNo=6", 5
+            )
+        )
