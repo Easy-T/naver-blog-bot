@@ -274,14 +274,23 @@ async def collect_blog_post_urls(page: object, url: str, count: int) -> list[str
     return urls
 
 
+_LOGNO_RE = re.compile(r'"logNo"\s*:\s*"?(\d{6,})"?')
+
+
 def _parse_naver_json(raw: str) -> dict:
     cleaned = raw.strip()
     if cleaned.startswith(")]}'"):
         cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned[4:]
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        raise ValueError("Naver category API returned invalid JSON") from exc
+    except json.JSONDecodeError:
+        # Naver's response embeds raw HTML (e.g. pagingHtml with \' escapes)
+        # that is not valid JSON. Fall back to extracting logNo values directly,
+        # preserving order. That is all collect_blog_post_urls needs.
+        log_nos = list(dict.fromkeys(_LOGNO_RE.findall(cleaned)))
+        if log_nos:
+            return {"postList": [{"logNo": ln} for ln in log_nos]}
+        raise ValueError("Naver category API returned invalid JSON") from None
 
 
 async def _collect_category_post_urls(

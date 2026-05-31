@@ -378,3 +378,32 @@ def test_collect_blog_post_urls_category_raises_when_empty() -> None:
                 CatPage(), "https://blog.naver.com/foo?categoryNo=6", 5
             )
         )
+
+
+def test_collect_blog_post_urls_category_handles_invalid_json_escapes() -> None:
+    # Real Naver responses embed pagingHtml with \' escapes that break json.loads.
+    class CatPage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            return (
+                '{"resultCode":"S","postList":'
+                '[{"logNo":"224291881837","categoryNo":"10"},'
+                '{"logNo":"224141677589","categoryNo":"10"}],'
+                "\"totalCount\":\"5\","
+                "\"pagingHtml\":\"<div class=\\'blog2_paginate\\'>1</div>\"}"
+            )
+
+    urls = asyncio.run(
+        collect_blog_post_urls(
+            CatPage(), "https://blog.naver.com/flowerbend?categoryNo=10", 5
+        )
+    )
+    assert urls == [
+        "https://m.blog.naver.com/flowerbend/224291881837",
+        "https://m.blog.naver.com/flowerbend/224141677589",
+    ]
