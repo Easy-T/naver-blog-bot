@@ -612,9 +612,7 @@ class FakeClipboard:
         self.copied = text
 
 
-def test_preview_copies_paste_text_and_writes_txt(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_preview_copies_paste_text_and_writes_txt(monkeypatch, tmp_path: Path) -> None:
     configure_paths(monkeypatch, tmp_path)
     clip = FakeClipboard()
     monkeypatch.setattr(cli, "_pyperclip", clip)

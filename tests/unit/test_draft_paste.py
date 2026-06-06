@@ -46,7 +46,9 @@ def test_paste_text_emoticon_marker_preserves_type_inline() -> None:
 
 
 def test_paste_text_multiple_emoticons_on_one_line() -> None:
-    out = _make_draft("좋아요 {{이모티콘:기쁨}} 그리고 {{이모티콘:감탄}}").to_paste_text()
+    out = _make_draft(
+        "좋아요 {{이모티콘:기쁨}} 그리고 {{이모티콘:감탄}}"
+    ).to_paste_text()
     assert "{{이모티콘:" not in out
     assert "기쁨" in out
     assert "감탄" in out
