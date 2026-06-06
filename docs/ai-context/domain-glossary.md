@@ -23,7 +23,8 @@
 | 짤방 검색 | `meme_fetch_command()` | `meme-fetch <URL>` 명령으로 URL에서 이미지를 다운로드해 짤방 라이브러리에 등록 |
 | 문맥 기반 짤방 배치 | `PostGenerator._place_memes_in_draft()` | 메모 키워드 단순 매칭 대신 생성된 초안 전체를 Claude가 분석해 각 문단에 적합한 `[짤방: id]` 마커 삽입 |
 | 브라우저 미리보기 | `preview_command()`, `Draft.to_html()` | `preview` 명령이 생성하는 로컬 HTML 파일. 자동으로 브라우저가 열리고 네이버 블로그 유사 레이아웃으로 렌더링 |
-| 클립보드 복사 | `preview_command()` + `pyperclip` | `preview` 실행 시 초안 본문을 클립보드에 자동 복사. 네이버 SmartEditor에 수동 붙여넣기 위해 사용 |
+| 클립보드 복사 | `preview_command()` + `pyperclip` | `preview` 실행 시 붙여넣기용 텍스트를 클립보드에 자동 복사. 네이버 SmartEditor에 수동 붙여넣기 위해 사용 |
+| 붙여넣기용 텍스트 | `Draft.to_paste_text()`, `preview_command()`, `drafts/<draft_id>.txt` | 초안 마커(`[사진:]`/`[짤방:]`/`{{이모티콘:}}`)를 사람이 읽을 삽입 단서로 변환한 SmartEditor 붙여넣기용 plain text. preview가 클립보드 복사 + `.txt` 저장으로 제공. 사진은 basename만(절대경로 누출 0), 짤방 id→label은 cli가 meme tags/alt_text로 구성(ADR-007 디커플링 유지) |
 
 | 포스트 목록 수집 | `naver.collect_blog_post_urls()`, `_select_post_hrefs()` | 블로그 홈/카테고리 페이지에서 최근 포스트 URL을 모으는 단계. 네이버는 JS 렌더 후 live DOM(`page.eval_on_selector_all`)에서 앵커를 추출해야 함 — 정적 HTML 커스텀 파서는 0개 반환 |
 | 카테고리별 프로필 | `naver.category_list_api_url()`, `_select_post_urls_from_titlelist()`, `categoryNo` | 네이버 블로그 카테고리별로 글만 학습해 별도 named 프로필로 저장. `profile-refresh <카테고리URL> --profile <이름>`. categoryNo 필터는 모바일 홈/PostList가 무시하므로 `PostTitleListAsync.naver` JSON API로 처리 |

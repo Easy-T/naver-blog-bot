@@ -139,6 +139,16 @@ graph TD
 - 대안: 모든 이미지를 JPEG로 강제(투명도·GIF 애니 파괴); CSS만 축소(바이트 불변 — 문제 미해결); 외부 썸네일 서비스(과함); WebP/AVIF 트랜스코딩(브라우저 호환·복잡도).
 - 트레이드오프: Pillow(+네이티브 libjpeg/zlib) 런타임 의존성과 약간의 재인코딩 CPU가 추가되지만, self-contained·경량 미리보기를 얻는다. cycle 11이 "Pillow 불필요"라 했던 결정을 명시적으로 뒤집는다(durable spec cycle-12 개정에 반영).
 
+### ADR-009: 미리보기 붙여넣기용 텍스트 export (클립보드 contract 변경)
+
+- 날짜: 2026-06-06
+- 상태: Accepted
+- Refines: ADR-007 (base64 임베드 HTML 미리보기는 유지; 클립보드 출력만 변경)
+- 결정: `preview`가 클립보드에 raw `body_markdown` 대신 `Draft.to_paste_text(meme_labels)`가 만든 "붙여넣기용 텍스트"를 복사하고, 같은 텍스트를 `drafts/<draft_id>.txt`로도 저장한다. 변환: `[사진: 절대경로]`→`〔📷 사진 삽입: 파일명〕`(basename만 — 절대경로 누출 0), `[짤방: id]`→`〔🖼️ 짤방: label〕`(label은 cli가 meme tags/alt_text로 구성, 없으면 id 폴백), `{{이모티콘:유형}}`→`〔😊 이모티콘: 유형〕`(인라인), 제목 마커 해시 제거, 일반 문단/빈 줄 보존. `to_paste_text`는 `dict[str, str]`만 받아 models.py가 meme_library를 import하지 않는다(ADR-007 디커플링 유지).
+- 이유: 기존 `preview`는 body_markdown을 그대로 클립보드에 복사해, SmartEditor에 붙이면 원시 마커와 절대 WSL 경로가 노출돼 사람이 수작업으로 지워야 했다. 붙여넣기용 텍스트는 한 번 붙이고 표시된 위치에 사진/짤방/이모티콘만 수동 삽입하면 되게 한다. `.txt` 저장은 WSL에서 클립보드(xclip 부재)가 실패해도 붙여넣기 가능한 산출물을 남긴다.
+- 대안: raw markdown 유지(원시 마커·절대경로 노출); rich-text/HTML 클립보드(SmartEditor 붙여넣기 복잡도); 별도 paste_export 모듈(to_html-on-Draft 관례 이탈).
+- 트레이드오프: preview가 산출물 2개(html+txt)를 쓰고 클립보드 내용이 더 이상 원본 마크다운과 1:1이 아니지만, SmartEditor 붙여넣기 경험이 깨끗해진다.
+
 <!-- ADR 형식:
 ### ADR-001: <제목>
 - 날짜: YYYY-MM-DD
