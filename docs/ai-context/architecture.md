@@ -149,6 +149,14 @@ graph TD
 - 대안: raw markdown 유지(원시 마커·절대경로 노출); rich-text/HTML 클립보드(SmartEditor 붙여넣기 복잡도); 별도 paste_export 모듈(to_html-on-Draft 관례 이탈).
 - 트레이드오프: preview가 산출물 2개(html+txt)를 쓰고 클립보드 내용이 더 이상 원본 마크다운과 1:1이 아니지만, SmartEditor 붙여넣기 경험이 깨끗해진다.
 
+### ADR-010: vision 기반 사진 캡션을 초안 생성에 도입
+
+- 날짜: 2026-06-07
+- 상태: Accepted
+- 맥락: 초안 생성기가 사진을 분석하지 않아 사진과 본문이 불일치(중구난방)했다.
+- 결정: 신규 `photo_describer` 모듈이 사진을 EXIF 보정·다운스케일 후 `complete_vision`으로 캡션(content-hash 캐시)하고, `PostGenerator.generate(use_vision=True)`가 캡션을 작성 프롬프트에 주입한다. `--no-vision`으로 기존 경로-only 동작으로 폴백한다.
+- 결과: 본문이 사진 내용에 근거하고 흐름에 맞게 배치된다. 비용은 캡션 캐시와 다운스케일로 완화한다.
+
 <!-- ADR 형식:
 ### ADR-001: <제목>
 - 날짜: YYYY-MM-DD
