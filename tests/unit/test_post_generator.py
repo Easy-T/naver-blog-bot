@@ -169,3 +169,58 @@ def test_place_memes_skips_when_no_memes() -> None:
     result = generator._place_memes_in_draft(body, MemeIndex())
 
     assert result == "본문입니다."
+
+
+class FakeVisionClaude(FakeClaude):
+    def __init__(self) -> None:
+        super().__init__()
+        self.vision_calls = 0
+
+    def complete_vision(self, *, image_path, prompt) -> str:
+        self.vision_calls += 1
+        return '{"caption": "파란 MUTO TAILOR 간판", "category": "외관"}'
+
+
+def _make_photo(p: Path) -> None:
+    from PIL import Image
+
+    Image.new("RGB", (640, 480), (10, 20, 30)).save(p, "JPEG")
+
+
+def test_generate_uses_vision_captions_in_prompt(tmp_path: Path) -> None:
+    photo = tmp_path / "26.jpg"
+    _make_photo(photo)
+    fake = FakeVisionClaude()
+    now = datetime(2026, 6, 7, 12, 0, 0, tzinfo=timezone.utc)
+    settings = Settings(drafts_dir=tmp_path / "drafts")
+    generator = PostGenerator(settings=settings, claude_client=fake, now=lambda: now)
+
+    generator.generate(
+        photo_paths=[photo],
+        memo="테일러샵 방문",
+        style_profile=StyleProfile(blog_url="https://blog.naver.com/flowerbend"),
+        meme_index=MemeIndex(),
+    )
+
+    assert fake.vision_calls == 1
+    assert "파란 MUTO TAILOR 간판" in fake.calls[0]["user_prompt"]
+
+
+def test_generate_no_vision_skips_vision(tmp_path: Path) -> None:
+    photo = tmp_path / "26.jpg"
+    _make_photo(photo)
+    fake = FakeVisionClaude()
+    now = datetime(2026, 6, 7, 12, 0, 0, tzinfo=timezone.utc)
+    settings = Settings(drafts_dir=tmp_path / "drafts")
+    generator = PostGenerator(settings=settings, claude_client=fake, now=lambda: now)
+
+    generator.generate(
+        photo_paths=[photo],
+        memo="테일러샵 방문",
+        style_profile=StyleProfile(blog_url="https://blog.naver.com/flowerbend"),
+        meme_index=MemeIndex(),
+        use_vision=False,
+    )
+
+    assert fake.vision_calls == 0
+    assert str(photo) in fake.calls[0]["user_prompt"]

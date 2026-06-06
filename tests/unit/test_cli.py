@@ -17,7 +17,16 @@ runner = CliRunner()
 
 
 class FakeGenerator:
-    def generate(self, *, photo_paths, memo, style_profile, meme_index, examples=None):
+    def generate(
+        self,
+        *,
+        photo_paths,
+        memo,
+        style_profile,
+        meme_index,
+        examples=None,
+        use_vision=True,
+    ):
         return Draft(
             id="draft-20260503-120000",
             title="포포몬 체험단 후기",

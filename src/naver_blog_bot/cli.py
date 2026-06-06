@@ -173,6 +173,12 @@ def draft_command(
         str,
         typer.Option("--profile", help="Style profile name. Default: 'default'."),
     ] = "default",
+    no_vision: Annotated[
+        bool,
+        typer.Option(
+            "--no-vision", help="사진 vision 분석 생략 (빠른 경로-only 모드)."
+        ),
+    ] = False,
 ) -> None:
     if len(items) < 2:
         typer.echo("Error: provide at least one photo path and a memo")
@@ -212,6 +218,7 @@ def draft_command(
             style_profile=style_profile,
             meme_index=meme_index,
             examples=examples,
+            use_vision=not no_vision,
         )
     except ClaudeBackendError as exc:
         typer.echo(f"Error: {exc}")
