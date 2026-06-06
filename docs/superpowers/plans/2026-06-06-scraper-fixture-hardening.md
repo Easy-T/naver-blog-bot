@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** active
+**Status:** completed
 **RPI-Cycle:** 14
 **Started:** 2026-06-06
 
@@ -38,7 +38,7 @@ Base URL used everywhere: `naver.post_list_url("https://blog.naver.com/flowerben
 - Create: `tests/unit/fixtures/naver/posttitlelist_empty.json`
 - Create: `tests/unit/fixtures/naver/posttitlelist_garbage.json`
 
-- [ ] **Step 1: Write `mobile_home.html`**
+- [x] **Step 1: Write `mobile_home.html`**
 
 Anchor source order yields resolved-unique post URLs `[223456789, 223456700, 223456611, 223456500]` after dedup (post1 card == post1 PostView; post2 card == post2 dup):
 
@@ -82,7 +82,7 @@ Anchor source order yields resolved-unique post URLs `[223456789, 223456700, 223
 </html>
 ```
 
-- [ ] **Step 2: Write `mobile_home_empty.html`** (chrome only, no post anchors)
+- [x] **Step 2: Write `mobile_home_empty.html`** (chrome only, no post anchors)
 
 ```html
 <!DOCTYPE html>
@@ -106,7 +106,7 @@ Anchor source order yields resolved-unique post URLs `[223456789, 223456700, 223
 </html>
 ```
 
-- [ ] **Step 3: Write `posttitlelist_category.json`** (XSSI prefix + valid JSON; `pagingHtml` uses valid `\"` escapes so `json.loads` succeeds)
+- [x] **Step 3: Write `posttitlelist_category.json`** (XSSI prefix + valid JSON; `pagingHtml` uses valid `\"` escapes so `json.loads` succeeds)
 
 ```
 )]}',
@@ -127,7 +127,7 @@ Anchor source order yields resolved-unique post URLs `[223456789, 223456700, 223
 }
 ```
 
-- [ ] **Step 4: Write `posttitlelist_paginghtml.json`** — `pagingHtml` contains literal backslash-quote (`\'`), which is an invalid JSON escape and breaks `json.loads`, forcing the `_LOGNO_RE` fallback. No XSSI prefix.
+- [x] **Step 4: Write `posttitlelist_paginghtml.json`** — `pagingHtml` contains literal backslash-quote (`\'`), which is an invalid JSON escape and breaks `json.loads`, forcing the `_LOGNO_RE` fallback. No XSSI prefix.
 
 ```
 {"resultCode":"S","blogId":"flowerbend","totalCount":"5","categoryNo":"10","postList":[{"logNo":"224291881837","title":"가을 제주 3박4일","addDate":"2026.05.01.","categoryNo":"10"},{"logNo":"224141677589","title":"오름 트레킹 후기","addDate":"2026.04.18.","categoryNo":"10"}],"pagingHtml":"<div class=\'blog2_paginate\'><a href=\'?currentPage=1\'>1</a><a href=\'?currentPage=2\'>2</a></div>"}
@@ -135,13 +135,13 @@ Anchor source order yields resolved-unique post URLs `[223456789, 223456700, 223
 
 NOTE: the `\'` sequences must be written as literal backslash + single-quote bytes in the file. Step 5 of Task 2 verifies (via `json.JSONDecodeError`) that this fixture is genuinely the broken-shape case.
 
-- [ ] **Step 5: Write `posttitlelist_empty.json`** (plain JSON, empty postList)
+- [x] **Step 5: Write `posttitlelist_empty.json`** (plain JSON, empty postList)
 
 ```
 {"resultCode":"N","resultMessage":"카테고리에 등록된 글이 없습니다.","blogId":"flowerbend","categoryNo":"77","totalCount":"0","postList":[]}
 ```
 
-- [ ] **Step 6: Write `posttitlelist_garbage.json`** (HTML error page — no logNo)
+- [x] **Step 6: Write `posttitlelist_garbage.json`** (HTML error page — no logNo)
 
 ```
 <!DOCTYPE html>
@@ -157,7 +157,7 @@ NOTE: the `\'` sequences must be written as literal backslash + single-quote byt
 - Create: `tests/unit/test_blog_scraper_naver_fixtures.py`
 - Test target: `src/naver_blog_bot/blog_scraper/adapters/naver.py` (pure parsers, unchanged)
 
-- [ ] **Step 1: Write the test module (helpers + 8 tests)**
+- [x] **Step 1: Write the test module (helpers + 8 tests)**
 
 ```python
 import json
@@ -255,12 +255,12 @@ def test_posttitlelist_garbage_fixture_raises_clear_error() -> None:
         naver._parse_naver_json(raw)
 ```
 
-- [ ] **Step 2: Run the new module, confirm all 8 pass**
+- [x] **Step 2: Run the new module, confirm all 8 pass**
 
 Run: `cd /home/indietogo/projects/naver-blog-bot && export PATH="/home/indietogo/.local/bin:$PATH" && uv run pytest tests/unit/test_blog_scraper_naver_fixtures.py -v`
 Expected: `8 passed`. If `test_posttitlelist_paginghtml_fixture_recovers_via_regex` fails at the `pytest.raises(json.JSONDecodeError)` line, the `\'` escape was not written literally — re-write Task 1 Step 4 ensuring a backslash precedes each single quote.
 
-- [ ] **Step 3: Confirm fixtures are non-vacuous (anchor soup actually filtered)**
+- [x] **Step 3: Confirm fixtures are non-vacuous (anchor soup actually filtered)**
 
 The `mobile_home.html` extraction must include nav/category/external/js/`#`/duplicate anchors that are all excluded. Sanity: the raw href list has > 10 entries but resolves to exactly 4 posts. This is asserted implicitly by the exact-list equality in Step 1 (any leaked nav/external URL would break equality).
 
@@ -268,14 +268,14 @@ The `mobile_home.html` extraction must include nav/category/external/js/`#`/dupl
 
 ## Task 3: Full-suite verification gate
 
-- [ ] **Step 1: Run the gate**
+- [x] **Step 1: Run the gate**
 
 Run: `cd /home/indietogo/projects/naver-blog-bot && export PATH="/home/indietogo/.local/bin:$PATH" && bash scripts/check.sh; echo "RC=$?"`
 Expected: ruff check passes, `ruff format --check` passes (new file must be pre-formatted), pytest prints `N passed` (171 prior + 8 new = 179), and `== check complete ==`, then `RC=0`.
 
-- [ ] **Step 2: NOBV-002 guard** — explicitly confirm BOTH the `passed` token AND `RC=0` AND the `== check complete ==` marker appear. A bare `RC=0` without the pytest `passed` line means the gate short-circuited; if so, run `uv run ruff format tests/unit/test_blog_scraper_naver_fixtures.py` and re-run the gate.
+- [x] **Step 2: NOBV-002 guard** — explicitly confirm BOTH the `passed` token AND `RC=0` AND the `== check complete ==` marker appear. A bare `RC=0` without the pytest `passed` line means the gate short-circuited; if so, run `uv run ruff format tests/unit/test_blog_scraper_naver_fixtures.py` and re-run the gate.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/unit/fixtures/naver/ tests/unit/test_blog_scraper_naver_fixtures.py docs/superpowers/plans/2026-06-06-scraper-fixture-hardening.md
@@ -291,3 +291,15 @@ git commit -m "test: add recorded-fixture characterization tests for Naver URL c
 - **Type consistency:** parser names/signatures match `naver.py` (`_select_post_hrefs(hrefs, base_url, count)`, `_select_post_urls_from_titlelist(payload, blog_id, count)`, `_parse_naver_json(raw)`); `post_list_url` returns the mobile base; `select_all(root, "a")` + `node.attrs.get("href")` confirmed against `html.py`.
 - **Non-vacuous:** exact-list equality + `json.JSONDecodeError` precondition guard the tests against false-green (NOBV-002 sister lesson).
 - **Scope:** test data + one test module only. No source change, no ADR, no dependency. Post-body parsing (`parse_post_html`) intentionally out of scope (goal targets URL collection).
+
+---
+
+## Execution Result
+
+**Status:** completed (2026-06-06)
+
+- Commit `ddb616c` — 6 fixtures + `test_blog_scraper_naver_fixtures.py` (8 tests) + this plan. 8 files, +463.
+- New module: `8 passed in 0.90s` (verbose run, all expected URL sets matched).
+- Full gate `bash scripts/check.sh`: ruff check OK, `ruff format --check` 47 files already formatted (new file pre-formatted), **179 passed** (171 prior + 8 new), `== check complete ==`; exit status confirmed 0 via `if`-branch (NOBV-002 — display `$?` returned empty through the WSL boundary, so success was verified by exit-branch + `passed` token + completion marker, not by RC display).
+- No source change — all 4 target parsers were already pure; characterization tests pin current behavior.
+- Known recurrence (deferred to user): `.git/index.lock` "File exists" on the staging step (3rd consecutive cycle). Resolved by confirming no `git` process + 0-byte stale lock, then `rm -f`. Candidate for non-obvious registration (§4 5 Whys) — flagged in closeout unknowns.
