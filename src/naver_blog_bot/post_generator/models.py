@@ -1,5 +1,6 @@
 import base64
 import html as _html
+import io
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,12 +16,63 @@ _MIME_BY_SUFFIX = {
 }
 
 
-def _image_data_uri(path: Path) -> str | None:
+_PHOTO_MAX_DIM = 1280
+_MEME_MAX_DIM = 480
+_JPEG_QUALITY = 82
+_EXIF_ORIENTATION_TAG = 0x0112
+
+
+def _resize_image_bytes(raw: bytes, max_dim: int) -> tuple[bytes, str] | None:
+    """Resize/re-encode image bytes for a lighter base64 embed.
+
+    Returns (new_bytes, mime) when smaller, else None (caller keeps the
+    original bytes). None on: Pillow missing, decode failure, animated image,
+    nothing to do (within cap and unrotated), or re-encode not smaller.
+    """
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return None
+    try:
+        with Image.open(io.BytesIO(raw)) as im:
+            fmt = (im.format or "").upper()
+            if getattr(im, "n_frames", 1) > 1:
+                return None  # animated GIF/WebP: preserve original frames
+            orientation = im.getexif().get(_EXIF_ORIENTATION_TAG, 1)
+            if max(im.size) <= max_dim and orientation == 1:
+                return None  # nothing to do; keep original bytes + suffix mime
+            oriented = ImageOps.exif_transpose(im)
+            if max(oriented.size) > max_dim:
+                oriented.thumbnail((max_dim, max_dim))
+            out = io.BytesIO()
+            if fmt == "PNG":
+                oriented.save(out, "PNG", optimize=True)
+                mime = "image/png"
+            elif fmt == "WEBP":
+                oriented.save(out, "WEBP", quality=_JPEG_QUALITY, method=6)
+                mime = "image/webp"
+            else:
+                rgb = oriented if oriented.mode == "RGB" else oriented.convert("RGB")
+                rgb.save(out, "JPEG", quality=_JPEG_QUALITY, optimize=True)
+                mime = "image/jpeg"
+    except Exception:
+        return None
+    data = out.getvalue()
+    if len(data) >= len(raw):
+        return None
+    return data, mime
+
+
+def _image_data_uri(path: Path, max_dim: int | None = None) -> str | None:
     try:
         raw = path.read_bytes()
     except OSError:
         return None
     mime = _MIME_BY_SUFFIX.get(path.suffix.lower(), "image/jpeg")
+    if max_dim is not None:
+        resized = _resize_image_bytes(raw, max_dim)
+        if resized is not None:
+            raw, mime = resized
     encoded = base64.b64encode(raw).decode("ascii")
     return f"data:{mime};base64,{encoded}"
 
@@ -61,7 +113,7 @@ class Draft(BaseModel):
                 continue
             if stripped.startswith("[사진:"):
                 path = stripped[4:-1].strip()
-                uri = _image_data_uri(Path(path))
+                uri = _image_data_uri(Path(path), _PHOTO_MAX_DIM)
                 if uri:
                     lines.append(
                         f'<img class="photo" src="{uri}" alt="{_html.escape(path)}">'
@@ -73,7 +125,7 @@ class Draft(BaseModel):
             elif stripped.startswith("[짤방:"):
                 ref = stripped[4:-1].strip()
                 target = meme_paths.get(ref)
-                uri = _image_data_uri(Path(target)) if target else None
+                uri = _image_data_uri(Path(target), _MEME_MAX_DIM) if target else None
                 if uri:
                     lines.append(
                         f'<img class="meme" src="{uri}" alt="짤방: {_html.escape(ref)}">'

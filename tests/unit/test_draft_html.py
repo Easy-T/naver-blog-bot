@@ -1,8 +1,13 @@
 import base64
+import io
+import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from naver_blog_bot.post_generator.models import Draft
+from PIL import Image
+
+from naver_blog_bot.post_generator.models import Draft, _EXIF_ORIENTATION_TAG
 
 # 1x1 PNG
 _PNG = base64.b64decode(
@@ -116,3 +121,86 @@ def test_to_html_no_arg_keeps_placeholders_backcompat() -> None:
     html = _make_draft("[사진: /x/a.jpg]\n[짤방: meme_smile]").to_html()
     assert '<div class="photo-placeholder">' in html
     assert '<div class="meme-placeholder">' in html
+
+
+# --- Cycle 12: image resize before embedding ---
+
+
+def _jpeg_bytes(width: int, height: int) -> bytes:
+    # A gradient (not a flat color) so the encoded size is non-trivial.
+    base = Image.linear_gradient("L").convert("RGB")
+    img = base.resize((width, height))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    return buf.getvalue()
+
+
+def _animated_gif_bytes() -> bytes:
+    frames = [Image.new("P", (12, 12), color=c) for c in (1, 2, 3)]
+    buf = io.BytesIO()
+    frames[0].save(
+        buf, "GIF", save_all=True, append_images=frames[1:], loop=0, duration=80
+    )
+    return buf.getvalue()
+
+
+def _embedded_bytes(html: str, css_class: str) -> bytes:
+    m = re.search(rf'<img class="{css_class}" src="data:[^;]+;base64,([^"]+)"', html)
+    assert m is not None, f"no <img class={css_class}> data URI in html"
+    return base64.b64decode(m.group(1))
+
+
+def test_resize_shrinks_large_photo(tmp_path: Path) -> None:
+    raw = _jpeg_bytes(3000, 2000)
+    img = tmp_path / "big.jpg"
+    img.write_bytes(raw)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    embedded = _embedded_bytes(html, "photo")
+    assert len(embedded) < len(raw)
+    with Image.open(io.BytesIO(embedded)) as out:
+        assert max(out.size) <= 1280
+
+
+def test_resize_does_not_upscale_small_image(tmp_path: Path) -> None:
+    raw = _jpeg_bytes(100, 80)  # already within the 1280 cap
+    img = tmp_path / "small.jpg"
+    img.write_bytes(raw)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    # within cap + no rotation -> original bytes kept, no upscale
+    assert _embedded_bytes(html, "photo") == raw
+
+
+def test_resize_applies_exif_orientation(tmp_path: Path) -> None:
+    # Landscape 1600x80 stored with orientation=6 -> portrait after transpose.
+    exif = Image.Exif()
+    exif[_EXIF_ORIENTATION_TAG] = 6
+    base = Image.linear_gradient("L").convert("RGB").resize((1600, 80))
+    img = tmp_path / "rot.jpg"
+    base.save(img, "JPEG", quality=90, exif=exif)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    embedded = _embedded_bytes(html, "photo")
+    with Image.open(io.BytesIO(embedded)) as out:
+        assert out.height > out.width  # orientation baked in -> now portrait
+        assert max(out.size) <= 1280
+
+
+def test_resize_falls_back_when_pillow_absent(tmp_path: Path, monkeypatch) -> None:
+    raw = _jpeg_bytes(3000, 2000)
+    img = tmp_path / "big.jpg"
+    img.write_bytes(raw)
+    # Simulate Pillow not installed: import inside _resize_image_bytes raises.
+    monkeypatch.setitem(sys.modules, "PIL", None)
+    monkeypatch.setitem(sys.modules, "PIL.Image", None)
+    monkeypatch.setitem(sys.modules, "PIL.ImageOps", None)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    assert '<img class="photo"' in html  # no crash
+    assert _embedded_bytes(html, "photo") == raw  # raw bytes embedded (fallback)
+
+
+def test_resize_preserves_animated_gif_meme(tmp_path: Path) -> None:
+    raw = _animated_gif_bytes()
+    meme = tmp_path / "anim.gif"
+    meme.write_bytes(raw)
+    html = _make_draft("[짤방: g1]").to_html({"g1": meme})
+    assert "data:image/gif;base64," in html
+    assert _embedded_bytes(html, "meme") == raw  # frames preserved (passthrough)
