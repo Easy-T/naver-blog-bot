@@ -1,0 +1,16 @@
+)]}',
+{
+	"resultCode": "S",
+	"resultMessage": "",
+	"blogId": "flowerbend",
+	"countPerPage": 30,
+	"currentPage": 1,
+	"totalCount": "5",
+	"categoryNo": "10",
+	"postList": [
+		{"logNo": "223456789", "title": "제주 오션뷰 카페 후기", "addDate": "2026.05.30.", "categoryNo": "10", "commentCount": "12", "sympathyCnt": "44"},
+		{"logNo": "223456700", "title": "성수동 디저트 맛집", "addDate": "2026.05.21.", "categoryNo": "10", "commentCount": "3", "sympathyCnt": "20"},
+		{"logNo": "223456611", "title": "홍대 브런치 다녀왔어요", "addDate": "2026.05.10.", "categoryNo": "10", "commentCount": "0", "sympathyCnt": "8"}
+	],
+	"pagingHtml": "<div class=\"blog2_paginate\"><a href=\"#\">1</a></div>"
+}
