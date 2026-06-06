@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** active
+**Status:** completed
 **RPI-Cycle:** 15
 **Started:** 2026-06-07
 
@@ -37,7 +37,7 @@ No source files are touched.
 - Create: `tests/unit/fixtures/naver/post_smarteditor_empty.html`
 - Modify: `tests/unit/test_blog_scraper_naver_fixtures.py`
 
-- [ ] **Step 1: Add post-body imports to the test module**
+- [x] **Step 1: Add post-body imports to the test module**
 
 At the top of `tests/unit/test_blog_scraper_naver_fixtures.py`, the existing imports are:
 ```python
@@ -63,7 +63,7 @@ from naver_blog_bot.blog_scraper.models import EmoticonBlock, ImageBlock, TextBl
 ```
 (`_load` helper already exists in the file and is reused for HTML fixtures.)
 
-- [ ] **Step 2: Write the failing SmartEditor body tests**
+- [x] **Step 2: Write the failing SmartEditor body tests**
 
 Append to `tests/unit/test_blog_scraper_naver_fixtures.py`:
 ```python
@@ -120,7 +120,7 @@ def test_post_smarteditor_empty_fixture_returns_no_blocks() -> None:
     assert doc.blocks == []
 ```
 
-- [ ] **Step 3: Run the new tests to verify they fail (fixtures missing)**
+- [x] **Step 3: Run the new tests to verify they fail (fixtures missing)**
 
 Run:
 ```bash
@@ -128,7 +128,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && e
 ```
 Expected: FAIL with `FileNotFoundError` (post_smarteditor.html / post_smarteditor_empty.html do not exist yet).
 
-- [ ] **Step 4: Create `post_smarteditor.html`**
+- [x] **Step 4: Create `post_smarteditor.html`**
 
 Create `tests/unit/fixtures/naver/post_smarteditor.html` with exactly:
 ```html
@@ -211,7 +211,7 @@ Block-by-block trace (direct children of `.se-main-container`, processed by `_pa
 6. `se-section-padding` div + `<script>` → no `se-component` class → skipped.
 7. se-image (`static/se/sticker` url matches `is_emoticon_img_attrs`) → `EmoticonBlock(description="하트뿅뿅")`.
 
-- [ ] **Step 5: Create `post_smarteditor_empty.html`**
+- [x] **Step 5: Create `post_smarteditor_empty.html`**
 
 Create `tests/unit/fixtures/naver/post_smarteditor_empty.html` with exactly:
 ```html
@@ -235,7 +235,7 @@ Create `tests/unit/fixtures/naver/post_smarteditor_empty.html` with exactly:
 ```
 Trace: container found → empty se-text → `[]`; `se-section-padding` non-component → skipped. `doc.blocks == []`, `doc.title == "빈 본문 테스트"`.
 
-- [ ] **Step 6: Run the SmartEditor tests to verify they pass**
+- [x] **Step 6: Run the SmartEditor tests to verify they pass**
 
 Run:
 ```bash
@@ -243,7 +243,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && e
 ```
 Expected: PASS (4 tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && bash scripts/git-commit.sh -m "test: add SmartEditor ONE post-body characterization fixtures (cycle 15)" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"'
@@ -258,7 +258,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && b
 - Create: `tests/unit/fixtures/naver/post_unsupported.html`
 - Modify: `tests/unit/test_blog_scraper_naver_fixtures.py`
 
-- [ ] **Step 1: Write the failing legacy + unsupported tests**
+- [x] **Step 1: Write the failing legacy + unsupported tests**
 
 Append to `tests/unit/test_blog_scraper_naver_fixtures.py`:
 ```python
@@ -292,7 +292,7 @@ def test_post_unsupported_fixture_raises_clear_error() -> None:
         )
 ```
 
-- [ ] **Step 2: Run to verify failure (fixtures missing)**
+- [x] **Step 2: Run to verify failure (fixtures missing)**
 
 Run:
 ```bash
@@ -300,7 +300,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && e
 ```
 Expected: FAIL with `FileNotFoundError`.
 
-- [ ] **Step 3: Create `post_legacy.html`**
+- [x] **Step 3: Create `post_legacy.html`**
 
 Create `tests/unit/fixtures/naver/post_legacy.html` with exactly:
 ```html
@@ -335,7 +335,7 @@ Trace (`_parse_legacy_area._walk` over `#postViewArea` direct children; `p`/`div
 5. `<p><img static/se/emoticon ...></p>` → p text empty + img src matches `static/se/emoticon` → `EmoticonBlock(description="신난 표정")`.
 6. `<p>다음에 또 가고 싶어요.</p>` → `TextBlock("다음에 또 가고 싶어요.")`.
 
-- [ ] **Step 4: Create `post_unsupported.html`**
+- [x] **Step 4: Create `post_unsupported.html`**
 
 Create `tests/unit/fixtures/naver/post_unsupported.html` with exactly:
 ```html
@@ -357,7 +357,7 @@ Create `tests/unit/fixtures/naver/post_unsupported.html` with exactly:
 ```
 Trace: no `.se-main-container`, no `#postViewArea` → `raise ValueError("unsupported Naver post structure")`.
 
-- [ ] **Step 5: Run the legacy + unsupported tests to verify they pass**
+- [x] **Step 5: Run the legacy + unsupported tests to verify they pass**
 
 Run:
 ```bash
@@ -365,7 +365,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && e
 ```
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && bash scripts/git-commit.sh -m "test: add legacy #postViewArea + unsupported-structure post-body fixtures (cycle 15)" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"'
@@ -377,7 +377,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && b
 
 **Files:** none (verification only).
 
-- [ ] **Step 1: Run the full new fixture module**
+- [x] **Step 1: Run the full new fixture module**
 
 Run:
 ```bash
@@ -385,7 +385,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && e
 ```
 Expected: PASS (cycle-14's 8 URL tests + cycle-15's 6 body tests = 14 passed).
 
-- [ ] **Step 2: Run the full quality gate and confirm RC 0 (NOBV-002)**
+- [x] **Step 2: Run the full quality gate and confirm RC 0 (NOBV-002)**
 
 Run (do NOT trust the displayed RC through the WSL boundary — branch on exit status + confirm the "passed" token + the completion marker):
 ```bash
@@ -393,7 +393,7 @@ wsl -d Ubuntu-24.04 -- bash -lc 'cd /home/indietogo/projects/naver-blog-bot && e
 ```
 Expected: `CHECK_EXIT_OK`, `ruff check` clean, `ruff format --check` clean, `185 passed` (179 prior + 6 new), `== check complete ==`.
 
-- [ ] **Step 3: Confirm no source files changed (characterization invariant)**
+- [x] **Step 3: Confirm no source files changed (characterization invariant)**
 
 Run:
 ```bash
@@ -409,3 +409,13 @@ Expected: empty list before `---END---` (only `tests/` changed across the two ta
 - **Placeholder scan:** none — every fixture and test is given verbatim with traced expected values.
 - **Type consistency:** tests import `parse_post_html`, `TextBlock`, `ImageBlock`, `EmoticonBlock` (exact names from `models.py` / `naver.py`). `_load` reused from the existing module. Block attribute names (`.content`, `.alt`, `.description`) match `models.py`.
 - **Characterization invariant:** zero `src/` change (Task 3 Step 3 enforces). New tests pin existing behavior; richer shapes catch shape-drift the flat inline synthetic tests do not.
+
+---
+
+## Execution Result (2026-06-07)
+
+- **Task 1** (commit `6d35ceb`): `post_smarteditor.html` + `post_smarteditor_empty.html` + 4 tests + this plan. RED confirmed (FileNotFoundError on missing fixtures) → GREEN (4 passed).
+- **Task 2** (commit `9c01535`): `post_legacy.html` + `post_unsupported.html` + 2 tests. RED (FileNotFoundError) → GREEN (2 passed).
+- **Task 3** (verification): full fixture module **14 passed** (8 cycle-14 + 6 cycle-15); `bash scripts/check.sh` **CHECK_EXIT_OK / 185 passed / == check complete ==** (RC 0 via exit-branch + passed token + marker, NOBV-002 — displayed RC unreliable through WSL boundary); `git diff --name-only HEAD~2 -- src/` **empty** (characterization invariant: 0 source change).
+- All 6 success criteria met. spec delta NO-OP; no ADR; no new domain terms.
+
