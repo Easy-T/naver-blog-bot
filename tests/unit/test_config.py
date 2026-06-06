@@ -93,3 +93,10 @@ def test_ensure_local_directories_creates_style_profiles_dir(
     settings = Settings()
     ensure_local_directories(settings)
     assert (tmp_path / "config" / "style_profiles").is_dir()
+
+
+def test_caption_cache_path_under_drafts() -> None:
+    from naver_blog_bot.config import Settings
+
+    s = Settings()
+    assert s.caption_cache_path == s.drafts_dir / ".caption-cache.json"

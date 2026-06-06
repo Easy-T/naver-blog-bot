@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     def meme_index_path(self) -> Path:
         return self.config_dir / "meme_index.json"
 
+    @property
+    def caption_cache_path(self) -> Path:
+        return self.drafts_dir / ".caption-cache.json"
+
 
 def get_settings() -> Settings:
     return Settings()
