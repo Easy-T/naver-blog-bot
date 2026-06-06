@@ -21,6 +21,13 @@ _MEME_MAX_DIM = 480
 _JPEG_QUALITY = 82
 _EXIF_ORIENTATION_TAG = 0x0112
 
+_EMOTICON_RE = re.compile(r"\{\{이모티콘:([^}]+)\}\}")
+
+
+def _emoticon_to_cue(text: str) -> str:
+    """Rewrite inline {{이모티콘:유형}} markers as plain-text insertion cues."""
+    return _EMOTICON_RE.sub(lambda m: f"〔😊 이모티콘: {m.group(1)}〕", text)
+
 
 def _resize_image_bytes(raw: bytes, max_dim: int) -> tuple[bytes, str] | None:
     """Resize/re-encode image bytes for a lighter base64 embed.
@@ -184,3 +191,35 @@ p{{line-height:1.8;margin:8px 0}}
 </div>
 </body>
 </html>"""
+
+    def to_paste_text(self, meme_labels: dict[str, str] | None = None) -> str:
+        """Render body markers as human-readable SmartEditor insertion cues.
+
+        Photo/meme markers become 〔…〕 cues (basename / label only, no absolute
+        paths); inline emoticon markers become 〔😊 …〕; markdown heading hashes
+        are stripped; plain paragraphs and blank lines are preserved.
+        `meme_labels` maps a meme id to a human label (built by the caller to
+        keep this model decoupled from meme_library — ADR-007/009); an unknown
+        id falls back to the raw id.
+        """
+        meme_labels = meme_labels or {}
+        out: list[str] = []
+        for line in self.body_markdown.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                out.append("")
+            elif stripped.startswith("[사진:"):
+                name = Path(stripped[4:-1].strip()).name
+                out.append(f"〔📷 사진 삽입: {name}〕")
+            elif stripped.startswith("[짤방:"):
+                ref = stripped[4:-1].strip()
+                out.append(f"〔🖼️ 짤방: {meme_labels.get(ref, ref)}〕")
+            elif stripped.startswith("### "):
+                out.append(_emoticon_to_cue(stripped[4:]))
+            elif stripped.startswith("## "):
+                out.append(_emoticon_to_cue(stripped[3:]))
+            elif stripped.startswith("# "):
+                out.append(_emoticon_to_cue(stripped[2:]))
+            else:
+                out.append(_emoticon_to_cue(line))
+        return "\n".join(out)
