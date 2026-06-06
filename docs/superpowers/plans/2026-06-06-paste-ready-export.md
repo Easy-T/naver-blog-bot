@@ -2,9 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** active
+**Status:** completed
 **RPI-Cycle:** 13
 **Started:** 2026-06-06
+**Completed:** 2026-06-06
 
 **Goal:** `naver-bot preview` copies *paste-ready text* (markers rewritten as
 human-readable insertion cues, no absolute paths) to the clipboard and saves it
@@ -42,7 +43,7 @@ ADR-007/009), writes the `.txt`, and copies the paste-text to the clipboard.
 - Modify: `src/naver_blog_bot/post_generator/models.py` (add regex + helper +
   method after the `Draft.to_html` method, ~line 187)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/unit/test_draft_paste.py`:
 
@@ -133,12 +134,12 @@ def test_paste_text_full_body_no_raw_markers() -> None:
     assert "/home/" not in out
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/unit/test_draft_paste.py -v`
 Expected: FAIL — `AttributeError: 'Draft' object has no attribute 'to_paste_text'`.
 
-- [ ] **Step 3: Implement `to_paste_text`**
+- [x] **Step 3: Implement `to_paste_text`**
 
 In `src/naver_blog_bot/post_generator/models.py`, add a module-level regex +
 helper near the other module constants (after the `_EXIF_ORIENTATION_TAG` block,
@@ -190,12 +191,12 @@ closing `"""</html>"""` return, ~line 187):
         return "\n".join(out)
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest tests/unit/test_draft_paste.py -v`
 Expected: PASS (9 passed).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/unit/test_draft_paste.py src/naver_blog_bot/post_generator/models.py
@@ -210,7 +211,7 @@ git commit -m "feat: add Draft.to_paste_text for SmartEditor paste cues (cycle 1
 - Modify: `src/naver_blog_bot/cli.py` — `preview_command` (~lines 238-269)
 - Modify: `tests/unit/test_cli.py` — add one preview-wiring test
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/unit/test_cli.py` (a `FakeClipboard` + test). `Draft`,
 `DraftRepository`, `Path`, `cli`, `runner` are already imported at the top:
@@ -262,13 +263,13 @@ def test_preview_copies_paste_text_and_writes_txt(
     assert "{{이모티콘:" not in clip.copied
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `uv run pytest tests/unit/test_cli.py::test_preview_copies_paste_text_and_writes_txt -v`
 Expected: FAIL — no `.txt` written and `clip.copied` equals raw `body_markdown`
 (still contains `[사진:`), so an assertion fails.
 
-- [ ] **Step 3: Implement the wiring**
+- [x] **Step 3: Implement the wiring**
 
 Replace the body of `preview_command` in `src/naver_blog_bot/cli.py` from the
 `meme_paths = {...}` line through the final `else` echo block with:
@@ -310,14 +311,14 @@ Replace the body of `preview_command` in `src/naver_blog_bot/cli.py` from the
         )
 ```
 
-- [ ] **Step 4: Run the new test + the existing preview test to verify they pass**
+- [x] **Step 4: Run the new test + the existing preview test to verify they pass**
 
 Run: `uv run pytest tests/unit/test_cli.py -k preview -v`
 Expected: PASS — both `test_preview_outputs_saved_draft` (still asserts
 "Preview opened:" + the `.html` name, which the new messages keep) and
 `test_preview_copies_paste_text_and_writes_txt`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/naver_blog_bot/cli.py tests/unit/test_cli.py
@@ -330,14 +331,14 @@ git commit -m "feat: preview copies paste-text + saves drafts/<id>.txt (cycle 13
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the full check gate**
+- [x] **Step 1: Run the full check gate**
 
 Run: `bash scripts/check.sh`
 Expected: `==> ruff check` clean, `==> ruff format --check` clean, `==> pytest`
 shows all tests passed (existing + 9 new paste + 1 new cli), final line
 `== check complete ==`.
 
-- [ ] **Step 2: Explicitly verify RC=0 (NOBV-002 — no false green)**
+- [x] **Step 2: Explicitly verify RC=0 (NOBV-002 — no false green)**
 
 Run: `bash scripts/check.sh; echo "RC=$?"`
 Expected: last line `RC=0` AND a `passed` token in the pytest output. If ruff
@@ -369,3 +370,25 @@ treat a non-zero RC or a missing `passed` token as success.
 `meme_labels`). `_EMOTICON_RE` / `_emoticon_to_cue` defined in Task 1 Step 3 and
 used only there. cue strings (`〔📷 사진 삽입:`, `〔🖼️ 짤방:`, `〔😊 이모티콘:`)
 consistent between impl and assertions. ✓
+
+---
+
+## Execution Result (2026-06-06)
+
+All tasks complete; gate green.
+
+- Task 1 — `Draft.to_paste_text` + `_EMOTICON_RE`/`_emoticon_to_cue` in
+  `models.py`; 9 unit tests in `tests/unit/test_draft_paste.py`. Commit `7459083`.
+- Task 2 — `preview_command` builds `meme_labels`, writes `drafts/<id>.txt`,
+  copies paste-text (not `body_markdown`); `test_cli.py` wiring test. Commit
+  `5db954c`. (Existing `test_preview_outputs_saved_draft` still green.)
+- ruff format on the two new test files (long-line wrap). Commit `b5253c4`.
+- Task 3 — `bash scripts/check.sh` verified **RC=0** via `&& echo GATE_GREEN_RC0`
+  (definitive branch), tail = `171 passed` + `== check complete ==`. ruff check
+  clean, ruff format --check clean, full pytest green. NOBV-002 honored (passed
+  token + RC + pytest-actually-ran all confirmed; an earlier run where ruff
+  format flagged the new files and pytest did NOT run was caught and fixed before
+  claiming green).
+- Smoke: `to_paste_text` on a sample draft renders clean cues
+  (`〔📷 사진 삽입: IMG_2201.jpg〕`, `〔😊 이모티콘: 감탄〕`, `〔🖼️ 짤방: 감동, 카페〕`),
+  no raw markers, no absolute path.
