@@ -86,6 +86,27 @@ gh pr merge --squash --delete-branch
 
 ## Common Operations
 
+### Commit (WSL stale index.lock guard)
+
+WSL 경계가 종료한 git 인덱스 쓰기가 0-byte `.git/index.lock` orphan을 남겨
+후속 커밋을 `fatal: Unable to create '.../.git/index.lock': File exists.`로
+차단하는 일이 반복됨 (non-obvious.md 2026-06-07 항목). 사이클 커밋은 가드 헬퍼로:
+
+```bash
+bash scripts/git-commit.sh -m "feat: ..."
+```
+
+헬퍼는 커밋 전 `[ -e .git/index.lock ] && ! pgrep -x git` 일 때만 stale lock을
+제거한 뒤 `git add -A` + `git commit`을 실행한다. 헬퍼 없이 직접 git 쓰기를 할
+때는 동일 가드를 인라인으로 선행:
+
+```bash
+if [ -e .git/index.lock ] && ! pgrep -x git >/dev/null 2>&1; then rm -f .git/index.lock; fi
+```
+
+`--no-verify`·force-push는 금지(deny-patterns.md). PreToolUse deny 훅은 헬퍼
+호출에도 동일 발화하므로 우회 아님.
+
 ### Install dependencies
 
 ```bash
