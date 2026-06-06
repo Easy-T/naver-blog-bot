@@ -2,9 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** active
+**Status:** completed
 **RPI-Cycle:** 12
 **Started:** 2026-06-06
+**Completed:** 2026-06-06
+
+> **Execution result (all tasks done, inline via executing-plans):**
+> - Task 1: `pillow>=11.0.0` added (installed 12.2.0); `import PIL` verified. Commit `a856a28`.
+> - Task 2+3: `_resize_image_bytes` + `max_dim` + call-site caps; 5 resize tests + 12 back-compat tests green (17/17 in test_draft_html). Commits `579468c` (code+tests), `ee18e23` (spec/ADR/plan). E402 avoided (top imports); ruff format applied.
+> - Task 4 smoke: 12-photo spoglia HTML **104MB → 2.06MB / 2.07MB (~50×)**; `<img class="photo">`×12 + `<img class="meme">`×3, placeholder leftover 0; `bash scripts/check.sh` **RC=0** (ruff + format + 161 pytest).
+> - Note: per-task commits folded (Task 2+3 combined) to avoid a transient F401 (the EXIF-tag import is consumed by the Task-3 test). drafts/*.html are gitignored — not committed.
 
 **Goal:** Shrink the ~103MB self-contained preview HTML by resizing/re-encoding images with Pillow before base64 embedding, while keeping draft-grade quality and never crashing when Pillow is absent.
 
