@@ -129,6 +129,16 @@ graph TD
 - 대안: UNC(`//wsl.localhost/...`) 경로로 `<img src>`(WSL이 켜져 있어야만 보임); 사진을 윈도우로 복사 후 상대경로 참조(파일이 흩어짐); 외부 이미지 서버(과함).
 - 트레이드오프: 원본 사진(장당 ~7MB)을 그대로 인코딩해 HTML이 ~103MB로 커진다. 기능은 정상이나 무겁다 → 리사이즈(Pillow)는 후속 사이클 12에서 처리. Draft 모델은 meme_library에 의존하지 않도록 meme_paths를 cli가 주입(디커플링 유지).
 
+### ADR-008: 미리보기 임베드 전 Pillow 리사이즈 (HTML 용량 절감)
+
+- 날짜: 2026-06-06
+- 상태: Accepted
+- Refines: ADR-007 (base64 인라인 임베드는 유지, 인코딩 전 리사이즈 단계만 추가)
+- 결정: `Draft.to_html`이 base64 인코딩 전에 Pillow로 이미지를 리사이즈/재인코딩한다. `_image_data_uri(path, max_dim=None)`에 `max_dim`을 추가하고, 새 `_resize_image_bytes(raw, max_dim)`가 decode→`ImageOps.exif_transpose`(회전 baking)→긴 변 `max_dim`까지 `thumbnail`(축소만)→format-preserving 재인코딩(JPEG q82 / PNG optimize / WEBP q82, 그 외 디코드 포맷→JPEG)한다. 사진 cap=1280px, 짤방 cap=480px, JPEG quality=82(모듈 상수). 애니메이션(`n_frames>1`)은 원본 passthrough. 재인코딩 결과가 원본보다 작지 않으면 원본 유지(never-bigger 가드). Pillow ImportError/decode 실패 시 원본 raw 임베드(ADR-007 동작) — 크래시 없음. Pillow를 `pyproject` `dependencies`에 추가(필수 의존성).
+- 이유: ADR-007이 원본 풀해상도 바이트를 그대로 인코딩해 12장 드래프트 HTML이 ~103MB로, 초안으로 열기엔 너무 무겁다. 긴 변 1280px·q82 재인코딩이면 장당 ~7MB→~0.3MB로 10~50× 절감되면서 720px 컨테이너 미리보기 화질은 충분하다. `.format`은 `exif_transpose`/`transpose`가 새 이미지를 반환하며 유실될 수 있어 transpose 전에 캡처한다(Pillow 공식 docs 검증).
+- 대안: 모든 이미지를 JPEG로 강제(투명도·GIF 애니 파괴); CSS만 축소(바이트 불변 — 문제 미해결); 외부 썸네일 서비스(과함); WebP/AVIF 트랜스코딩(브라우저 호환·복잡도).
+- 트레이드오프: Pillow(+네이티브 libjpeg/zlib) 런타임 의존성과 약간의 재인코딩 CPU가 추가되지만, self-contained·경량 미리보기를 얻는다. cycle 11이 "Pillow 불필요"라 했던 결정을 명시적으로 뒤집는다(durable spec cycle-12 개정에 반영).
+
 <!-- ADR 형식:
 ### ADR-001: <제목>
 - 날짜: YYYY-MM-DD
