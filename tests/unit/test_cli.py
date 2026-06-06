@@ -602,3 +602,49 @@ def test_meme_add_copies_into_memes_dir(monkeypatch, tmp_path: Path) -> None:
     index = load_meme_index(settings.meme_index_path)
     assert len(index.memes) == 1
     assert str(index.memes[0].path).startswith(str(settings.memes_dir))
+
+
+class FakeClipboard:
+    def __init__(self) -> None:
+        self.copied: str | None = None
+
+    def copy(self, text: str) -> None:
+        self.copied = text
+
+
+def test_preview_copies_paste_text_and_writes_txt(
+    monkeypatch, tmp_path: Path
+) -> None:
+    configure_paths(monkeypatch, tmp_path)
+    clip = FakeClipboard()
+    monkeypatch.setattr(cli, "_pyperclip", clip)
+    monkeypatch.setattr(cli, "_PYPERCLIP_AVAILABLE", True)
+    monkeypatch.setattr(cli, "_open_in_browser", lambda path: None)
+
+    DraftRepository(tmp_path / "drafts").save(
+        Draft(
+            id="draft-20260606-120000",
+            title="체험단 후기",
+            memo="메모",
+            body_markdown=(
+                "# 체험단 후기\n\n"
+                "[사진: /home/indietogo/photos/IMG_1234.jpg]\n\n"
+                "정말 좋았어요 {{이모티콘:만족}}"
+            ),
+            photo_paths=[Path("/home/indietogo/photos/IMG_1234.jpg")],
+            ogq_artwork_id="644e042a7d7f8",
+        )
+    )
+
+    result = runner.invoke(cli.app, ["preview", "draft-20260606-120000"])
+
+    assert result.exit_code == 0, result.stdout
+    txt_path = tmp_path / "drafts" / "draft-20260606-120000.txt"
+    assert txt_path.exists()
+    txt = txt_path.read_text(encoding="utf-8")
+    assert "[사진:" not in txt
+    assert "/home/" not in txt
+    assert "IMG_1234.jpg" in txt
+    # Clipboard received the paste-text, not raw markdown.
+    assert clip.copied == txt
+    assert "{{이모티콘:" not in clip.copied

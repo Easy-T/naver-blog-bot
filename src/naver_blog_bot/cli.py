@@ -246,25 +246,38 @@ def preview_command(
         typer.echo(f"Draft not found: {draft_id}")
         raise typer.Exit(1)
 
-    meme_paths = {
-        meme.id: meme.path for meme in load_meme_index(settings.meme_index_path).memes
+    index = load_meme_index(settings.meme_index_path)
+    meme_paths = {meme.id: meme.path for meme in index.memes}
+    meme_labels = {
+        meme.id: (", ".join(meme.tags) if meme.tags else (meme.alt_text or meme.id))
+        for meme in index.memes
     }
     html_path = settings.drafts_dir / f"{draft_id}.html"
     html_path.write_text(draft.to_html(meme_paths), encoding="utf-8")
+
+    paste_text = draft.to_paste_text(meme_labels)
+    txt_path = settings.drafts_dir / f"{draft_id}.txt"
+    txt_path.write_text(paste_text, encoding="utf-8")
+
     _open_in_browser(html_path)
 
     if _PYPERCLIP_AVAILABLE:
         try:
-            _pyperclip.copy(draft.body_markdown)
-            typer.echo(f"Preview opened: {html_path}\nContent copied to clipboard.")
+            _pyperclip.copy(paste_text)
+            typer.echo(
+                f"Preview opened: {html_path}\n"
+                f"Paste-ready text copied to clipboard (also saved: {txt_path})."
+            )
         except Exception:
             typer.echo(
                 f"Preview opened: {html_path}\n"
+                f"Paste-ready text saved: {txt_path}\n"
                 "(Clipboard copy failed — install xclip or xsel on WSL2.)"
             )
     else:
         typer.echo(
             f"Preview opened: {html_path}\n"
+            f"Paste-ready text saved: {txt_path}\n"
             "(pyperclip not available — run 'uv sync' to enable clipboard.)"
         )
 
