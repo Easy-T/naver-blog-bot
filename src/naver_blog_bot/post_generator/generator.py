@@ -4,6 +4,8 @@ from pathlib import Path
 
 from naver_blog_bot.config import Settings
 from naver_blog_bot.meme_library.models import MemeAsset, MemeIndex
+from naver_blog_bot.photo_describer.models import PhotoCaption
+from naver_blog_bot.photo_describer.service import describe_photos
 from naver_blog_bot.post_generator.drafts import draft_id_from_time
 from naver_blog_bot.post_generator.models import Draft
 from naver_blog_bot.shared.protocols import TextCompleter
@@ -13,7 +15,8 @@ from naver_blog_bot.style_profiler.models import StyleProfile
 SYSTEM_PROMPT = """너는 네이버 블로그 체험단 후기 초안을 작성하는 한국어 글쓰기 도우미다.
 사용자의 기존 문체를 우선하고, 과장된 광고 문장보다 실제 사용 경험처럼 자연스럽게 쓴다.
 사진 위치, 이모티콘 의도, 짤방 후보는 초안에 사람이 검토할 수 있는 표시로 남긴다.
-이모티콘 위치는 캐시 컨텍스트의 emoticon_usage_patterns에서 학습한 패턴을 따른다. 모든 문단에 강제로 넣지 않는다."""
+이모티콘 위치는 캐시 컨텍스트의 emoticon_usage_patterns에서 학습한 패턴을 따른다. 모든 문단에 강제로 넣지 않는다.
+사진 설명(내용·카테고리)이 주어지면 그 내용에 근거해 서술하고, 사진을 이야기 흐름에 맞게 재배치·그룹핑한다. 설명에 없는 내용을 지어내지 않는다."""
 
 MEME_PLACEMENT_SYSTEM = """너는 한국어 블로그 편집자다.
 초안과 짤방 목록을 보고, 각 짤방이 자연스럽게 어울리는 문단 바로 다음 줄에 [짤방: {id}] 마커를 삽입해라.
@@ -52,7 +55,19 @@ class PostGenerator:
         style_profile: StyleProfile,
         meme_index: MemeIndex,
         examples: list[ExamplePost] | None = None,
+        use_vision: bool = True,
     ) -> Draft:
+        captions: list[PhotoCaption] = []
+        if (
+            use_vision
+            and photo_paths
+            and hasattr(self.claude_client, "complete_vision")
+        ):
+            captions = describe_photos(
+                photo_paths,
+                self.claude_client,  # type: ignore[arg-type]
+                cache_path=self.settings.caption_cache_path,
+            )
         selected_memes = meme_index.candidates_for_memo(memo)
         body_markdown = self.claude_client.complete_text(
             system_prompt=SYSTEM_PROMPT,
@@ -61,7 +76,7 @@ class PostGenerator:
                 meme_index.to_cache_text(),
             ],
             user_prompt=self._build_user_prompt(
-                photo_paths, memo, selected_memes, examples
+                photo_paths, memo, selected_memes, examples, captions
             ),
         )
         body_markdown = self._place_memes_in_draft(body_markdown, meme_index)
@@ -83,8 +98,25 @@ class PostGenerator:
         memo: str,
         selected_memes: list[MemeAsset],
         examples: list[ExamplePost] | None,
+        captions: list[PhotoCaption] | None = None,
     ) -> str:
-        photos = "\n".join(f"- {path}" for path in photo_paths)
+        caption_by_path = {str(c.path): c for c in (captions or [])}
+        photo_lines: list[str] = []
+        for path in photo_paths:
+            cap = caption_by_path.get(str(path))
+            if cap and cap.caption:
+                photo_lines.append(f"- {path}: {cap.caption} [{cap.category}]")
+            else:
+                photo_lines.append(f"- {path}")
+        photos = "\n".join(photo_lines)
+
+        arrange_hint = (
+            "\n사진은 위 설명을 참고해 이야기 흐름에 맞게 순서를 재배치하고 "
+            "비슷한 사진은 묶어도 된다."
+            if caption_by_path
+            else ""
+        )
+
         memes = (
             "\n".join(
                 f"- {meme.id}: {meme.path} ({', '.join(meme.use_cases)})"
@@ -108,7 +140,7 @@ class PostGenerator:
 {memo}
 
 사진 경로:
-{photos}
+{photos}{arrange_hint}
 
 사용 가능한 OGQ 이모티콘:
 - artworkId: {self.settings.ogq_artwork_id}
