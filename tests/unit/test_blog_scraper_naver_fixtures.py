@@ -146,3 +146,33 @@ def test_post_smarteditor_empty_fixture_returns_no_blocks() -> None:
     # graceful empty block list, NOT a crash.
     assert doc.title == "빈 본문 테스트"
     assert doc.blocks == []
+
+
+# --- Legacy #postViewArea body + unsupported structure ---
+
+
+def test_post_legacy_fixture_block_order_and_classification() -> None:
+    doc = parse_post_html(
+        _load("post_legacy.html"), "https://m.blog.naver.com/flowerbend/1"
+    )
+    assert doc.title == "2019년 가을 제주 여행 기록"
+    assert [type(b) for b in doc.blocks] == [
+        TextBlock,
+        ImageBlock,
+        TextBlock,
+        ImageBlock,
+        EmoticonBlock,
+        TextBlock,
+    ]
+    assert doc.blocks[0].content == "제주도에 다녀왔습니다."
+    assert doc.blocks[1].alt == "제주 바다"
+    assert doc.blocks[3].alt == "제주 카페"
+    assert doc.blocks[4].description == "신난 표정"
+    assert doc.blocks[5].content == "다음에 또 가고 싶어요."
+
+
+def test_post_unsupported_fixture_raises_clear_error() -> None:
+    with pytest.raises(ValueError, match="unsupported Naver post structure"):
+        parse_post_html(
+            _load("post_unsupported.html"), "https://m.blog.naver.com/flowerbend/1"
+        )
