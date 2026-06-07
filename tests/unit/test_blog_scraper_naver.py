@@ -458,3 +458,76 @@ def test_parse_category_numbers_strips_naver_prefix_and_dedupes() -> None:
 
 def test_parse_category_numbers_empty_returns_zero_fallback() -> None:
     assert naver._parse_category_numbers("{}") == ["0"]
+
+
+def test_title_list_api_url_for_category_and_page() -> None:
+    url = naver._title_list_api_url("flowerbend", "10", 2)
+    assert "PostTitleListAsync.naver" in url
+    assert "blogId=flowerbend" in url
+    assert "categoryNo=10" in url
+    assert "currentPage=2" in url
+
+
+def test_collect_all_post_urls_paginates_each_category() -> None:
+    import json
+
+    pages = {
+        ("10", 1): {"postList": [{"logNo": "1"}, {"logNo": "2"}]},
+        ("10", 2): {"postList": []},
+        ("6", 1): {"postList": [{"logNo": "2"}, {"logNo": "9"}]},
+        ("6", 2): {"postList": []},
+    }
+
+    class FakePage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            text = str(arg)
+            if "category-list" in text:
+                return json.dumps(
+                    {
+                        "result": {
+                            "mylogCategoryList": [{"categoryNo": 10}, {"categoryNo": 6}]
+                        }
+                    }
+                )
+            from urllib.parse import parse_qs, urlparse
+
+            qs = parse_qs(urlparse(text).query)
+            cat = qs["categoryNo"][0]
+            page_no = int(qs["currentPage"][0])
+            return json.dumps(pages[(cat, page_no)])
+
+    urls = asyncio.run(
+        naver.collect_all_post_urls(FakePage(), "https://blog.naver.com/flowerbend")
+    )
+    assert urls == [
+        "https://m.blog.naver.com/flowerbend/1",
+        "https://m.blog.naver.com/flowerbend/2",
+        "https://m.blog.naver.com/flowerbend/9",
+    ]
+
+
+def test_collect_all_post_urls_raises_when_empty() -> None:
+    import json
+
+    class FakePage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            if "category-list" in str(arg):
+                return json.dumps({"list": [{"categoryNo": 0}]})
+            return json.dumps({"postList": []})
+
+    with pytest.raises(ValueError, match="no posts found"):
+        asyncio.run(
+            naver.collect_all_post_urls(FakePage(), "https://blog.naver.com/foo")
+        )
