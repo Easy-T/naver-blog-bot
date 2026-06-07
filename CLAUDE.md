@@ -15,6 +15,7 @@ Python 3.11+ / uv / Typer / Playwright / anthropic SDK / pydantic-settings / JSO
 - `style_profiler` — style profile schema and JSON loader/saver
 - `meme_library` — meme asset/index schema and JSON loader/saver
 - `photo_describer` — 사진을 vision으로 캡션 (EXIF 보정·다운스케일·content-hash 캐시)
+- `meme_harvester` — 블로그 이미지를 vision으로 짤방 판정·수집 (hash 중복제거·자동 등록·캐시)
 - `post_generator` — draft models, repository, and Claude-backed generation service
 - `shared/claude_client.py` — centralized Anthropic SDK text request wrapper
 - `cli.py` — Typer command surface for init, draft, preview, and blocked future commands

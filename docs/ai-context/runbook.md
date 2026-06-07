@@ -125,6 +125,17 @@ uv run pytest -v
 uv run naver-bot init
 ```
 
+### Build the comprehensive "flowerbend" profile + harvest 짤방
+
+```bash
+# 전 카테고리·모든 글 학습 + 블로그 이미지에서 짤방 자동 수집(전역 라이브러리에 등록)
+uv run naver-bot profile-refresh https://blog.naver.com/flowerbend --profile flowerbend --all-categories
+# 스타일만(짤방 수집 생략)
+uv run naver-bot profile-refresh <url> --profile <name> --no-memes
+```
+
+주의: `--all-categories`는 모든 글을 스크랩하고 **본문 이미지마다 vision 분류**를 돌리는 1회성 학습 작업이라 느리다(글·이미지 수에 따라 수십 분~). 재실행은 URL+content-hash 캐시(`config/.harvest-cache.json`)로 vision 0콜. 수집된 짤방은 `assets/memes/harvested-*`에 저장되고 모든 프로필이 공유한다.
+
 ### Generate a local draft
 
 ```bash
