@@ -28,6 +28,12 @@
 
 | 포스트 목록 수집 | `naver.collect_blog_post_urls()`, `_select_post_hrefs()` | 블로그 홈/카테고리 페이지에서 최근 포스트 URL을 모으는 단계. 네이버는 JS 렌더 후 live DOM(`page.eval_on_selector_all`)에서 앵커를 추출해야 함 — 정적 HTML 커스텀 파서는 0개 반환 |
 | 카테고리별 프로필 | `naver.category_list_api_url()`, `_select_post_urls_from_titlelist()`, `categoryNo` | 네이버 블로그 카테고리별로 글만 학습해 별도 named 프로필로 저장. `profile-refresh <카테고리URL> --profile <이름>`. categoryNo 필터는 모바일 홈/PostList가 무시하므로 `PostTitleListAsync.naver` JSON API로 처리 |
+| 종합 프로필(이방봉) | `flowerbend` 프로필 id, `--all-categories`, `scrape_all()` | 전 카테고리·모든 글을 학습한 단일 스타일 프로필. id는 ASCII `flowerbend`(한글 인자 깨짐·슬러그 제약 회피), 별칭 "이방봉" |
+| 짤방 자동 수집 | `harvest_memes()`, `classify_image()`, `meme_harvester/`, `config/.harvest-cache.json` | `profile-refresh` URL 스크랩 이미지를 다운로드·vision `is_meme` 분류·content-hash 중복제거 후 is_meme만 자동 등록. `frequency`=등장 글 수. URL+hash 캐시로 재실행 시 vision 0콜 |
+| 짤방 사용 습관 | `StyleProfile.meme_usage_patterns`, `PostDocument.to_annotated_text()` | 주인이 언제·어떤 흐름에서 짤방을 쓰는지 학습하는 7번째 문체 축. `[짤방]`/`[사진]` 주석 텍스트로 학습 |
+| 전체 글 수집 | `naver.collect_all_post_urls()`, `naver.category_list_endpoint()`, `scrape_blog_all()` | category-list API로 전 카테고리를 열거한 뒤 각 카테고리를 `PostTitleListAsync.naver`로 페이지네이션해 모든 logNo를 수집 |
+| 본문 이미지 URL | `ImageBlock.src` | 스크래퍼가 보존하는 본문 이미지 원본 URL(이전엔 버려짐). 짤방 자동 수집의 입력 |
+| 배치 프로필 빌드 | `refresh_style_profile(batch_size=12)`, `MERGE_PROMPT` | 대량 글을 청크별 부분 프로필로 추출한 뒤 병합하는 map-reduce. 소량(≤batch_size)은 기존 단일 콜 |
 
 ## Identical-Looking, Different Meaning
 
