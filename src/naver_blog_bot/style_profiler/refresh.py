@@ -24,6 +24,27 @@ SYSTEM_PROMPT = """너는 한국어 블로그 포스트의 문체 분석가다.
 
 각 리스트는 3-8개의 간결한 한국어 문자열을 포함해야 한다. JSON 외의 다른 텍스트는 반환하지 마라."""
 
+MERGE_PROMPT = """너는 여러 부분 문체 프로필(JSON)을 하나로 통합하는 편집자다.
+같은 의미의 항목은 합치고 중복은 제거해, 블로그 전체를 대표하는 안정적 패턴만 남겨라.
+입력과 동일한 7개 키를 가진 JSON 객체만 반환해라. 각 리스트는 3-8개. JSON 외 텍스트 금지.
+키: structure_patterns, tone_keywords, frequent_expressions, review_conventions,
+photo_usage_notes, emoticon_usage_patterns, meme_usage_patterns"""
+
+
+def _complete_profile_json(
+    completer: TextCompleter, system_prompt: str, user_prompt: str
+) -> dict:
+    response = completer.complete_text(
+        system_prompt=system_prompt, user_prompt=user_prompt, cacheable_context=()
+    )
+    try:
+        data = json.loads(response)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Claude returned invalid JSON") from exc
+    if not isinstance(data, dict):
+        raise ValueError("Claude returned invalid JSON")
+    return data
+
 
 def refresh_style_profile(
     *,
@@ -31,17 +52,25 @@ def refresh_style_profile(
     blog_url: str,
     sample_texts: Sequence[str],
     completer: TextCompleter,
+    batch_size: int = 12,
 ) -> StyleProfile:
-    user_prompt = "샘플 블로그 포스트:\n\n" + "\n\n---\n\n".join(sample_texts)
-    response = completer.complete_text(
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        cacheable_context=(),
-    )
-    try:
-        data = json.loads(response)
-    except json.JSONDecodeError as exc:
-        raise ValueError("Claude returned invalid JSON") from exc
+    texts = list(sample_texts)
+    if len(texts) <= batch_size:
+        user_prompt = "샘플 블로그 포스트:\n\n" + "\n\n---\n\n".join(texts)
+        data = _complete_profile_json(completer, SYSTEM_PROMPT, user_prompt)
+    else:
+        partials: list[str] = []
+        for start in range(0, len(texts), batch_size):
+            chunk = texts[start : start + batch_size]
+            user_prompt = "샘플 블로그 포스트:\n\n" + "\n\n---\n\n".join(chunk)
+            partial = completer.complete_text(
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                cacheable_context=(),
+            )
+            partials.append(partial)
+        merge_input = "부분 프로필들:\n\n" + "\n\n---\n\n".join(partials)
+        data = _complete_profile_json(completer, MERGE_PROMPT, merge_input)
     try:
         return StyleProfile(profile_name=profile_name, blog_url=blog_url, **data)
     except Exception as exc:
