@@ -135,11 +135,34 @@ def _jpeg_bytes(width: int, height: int) -> bytes:
     return buf.getvalue()
 
 
-def _animated_gif_bytes() -> bytes:
-    frames = [Image.new("P", (12, 12), color=c) for c in (1, 2, 3)]
+def _mpo_bytes(width: int = 4032, height: int = 3024) -> bytes:
+    # iPhone식 MPO = JPEG 기반 멀티프레임 "정지영상". 재오픈 시
+    # format=MPO, n_frames=2, is_animated=True (진짜 움짤과 is_animated 동일 → format만 구분자).
+    base = Image.linear_gradient("L").convert("RGB").resize((width, height))
+    buf = io.BytesIO()
+    base.save(buf, "MPO", save_all=True, append_images=[base], quality=90)
+    return buf.getvalue()
+
+
+def _genuine_animated_gif_bytes(size: int = 600) -> bytes:
+    # 4개 "서로 다른" 프레임 → GIF가 프레임을 붕괴시키지 않음(n_frames=4, is_animated=True).
+    # size는 반드시 _MEME_MAX_DIM(480)보다 커야 한다. 작으면 within-cap 분기가
+    # 가드와 무관하게 None을 반환해 테스트가 false-safety가 된다(실측 확인됨).
+    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]
+    frames = [Image.new("RGB", (size, size), color=c) for c in colors]
     buf = io.BytesIO()
     frames[0].save(
         buf, "GIF", save_all=True, append_images=frames[1:], loop=0, duration=80
+    )
+    return buf.getvalue()
+
+
+def _genuine_animated_webp_bytes(size: int = 600) -> bytes:
+    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]
+    frames = [Image.new("RGB", (size, size), color=c) for c in colors]
+    buf = io.BytesIO()
+    frames[0].save(
+        buf, "WEBP", save_all=True, append_images=frames[1:], duration=80, loop=0
     )
     return buf.getvalue()
 
@@ -197,10 +220,45 @@ def test_resize_falls_back_when_pillow_absent(tmp_path: Path, monkeypatch) -> No
     assert _embedded_bytes(html, "photo") == raw  # raw bytes embedded (fallback)
 
 
-def test_resize_preserves_animated_gif_meme(tmp_path: Path) -> None:
-    raw = _animated_gif_bytes()
+# --- Cycle 14: MPO multi-frame still ---
+
+
+def test_resize_shrinks_mpo_still_photo(tmp_path: Path) -> None:
+    raw = _mpo_bytes()
+    # sanity: 픽스처가 정말 멀티프레임 MPO인지(정직한 실패 보장)
+    with Image.open(io.BytesIO(raw)) as probe:
+        assert (probe.format or "").upper() == "MPO"
+        assert getattr(probe, "n_frames", 1) > 1
+    img = tmp_path / "iphone.jpg"  # 아이폰은 MPO를 .jpg 확장자로 저장
+    img.write_bytes(raw)
+    html = _make_draft(f"[사진: {img}]").to_html()
+    embedded = _embedded_bytes(html, "photo")
+    assert len(embedded) < len(raw)
+    with Image.open(io.BytesIO(embedded)) as out:
+        assert max(out.size) <= 1280
+
+
+def test_resize_preserves_genuine_animated_gif_meme(tmp_path: Path) -> None:
+    raw = _genuine_animated_gif_bytes(
+        600
+    )  # > _MEME_MAX_DIM(480) 라야 가드가 실제로 작동
+    with Image.open(io.BytesIO(raw)) as probe:
+        assert getattr(probe, "n_frames", 1) > 1 and probe.is_animated
     meme = tmp_path / "anim.gif"
     meme.write_bytes(raw)
     html = _make_draft("[짤방: g1]").to_html({"g1": meme})
     assert "data:image/gif;base64," in html
-    assert _embedded_bytes(html, "meme") == raw  # frames preserved (passthrough)
+    assert (
+        _embedded_bytes(html, "meme") == raw
+    )  # 프레임 보존(passthrough, byte-identical)
+
+
+def test_resize_preserves_genuine_animated_webp_meme(tmp_path: Path) -> None:
+    raw = _genuine_animated_webp_bytes(600)
+    with Image.open(io.BytesIO(raw)) as probe:
+        assert getattr(probe, "n_frames", 1) > 1 and probe.is_animated
+    meme = tmp_path / "anim.webp"
+    meme.write_bytes(raw)
+    html = _make_draft("[짤방: w1]").to_html({"w1": meme})
+    assert "data:image/webp;base64," in html
+    assert _embedded_bytes(html, "meme") == raw  # 프레임 보존

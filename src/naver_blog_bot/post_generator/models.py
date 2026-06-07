@@ -33,7 +33,7 @@ def _resize_image_bytes(raw: bytes, max_dim: int) -> tuple[bytes, str] | None:
     """Resize/re-encode image bytes for a lighter base64 embed.
 
     Returns (new_bytes, mime) when smaller, else None (caller keeps the
-    original bytes). None on: Pillow missing, decode failure, animated image,
+    original bytes). None on: Pillow missing, decode failure, genuine animated GIF/WebP,
     nothing to do (within cap and unrotated), or re-encode not smaller.
     """
     try:
@@ -43,8 +43,11 @@ def _resize_image_bytes(raw: bytes, max_dim: int) -> tuple[bytes, str] | None:
     try:
         with Image.open(io.BytesIO(raw)) as im:
             fmt = (im.format or "").upper()
+            if fmt in {"GIF", "WEBP"} and getattr(im, "is_animated", False):
+                return None  # genuine animated GIF/WebP: preserve frames
             if getattr(im, "n_frames", 1) > 1:
-                return None  # animated GIF/WebP: preserve original frames
+                # multi-frame still (iPhone MPO, multi-page TIFF): primary frame
+                im.seek(0)
             orientation = im.getexif().get(_EXIF_ORIENTATION_TAG, 1)
             if max(im.size) <= max_dim and orientation == 1:
                 return None  # nothing to do; keep original bytes + suffix mime

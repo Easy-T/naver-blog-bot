@@ -10,6 +10,8 @@
 | 체험단 후기 | `Draft`, `PostGenerator.generate()` | 사진과 메모를 바탕으로 생성하는 리뷰형 네이버 블로그 초안 |
 | 스타일 프로필 | `StyleProfile`, `StyleProfile.emoticon_usage_patterns`, `config/style_profiles/<profile-name>.json` | 작성자 문체와 이모티콘 사용 패턴 신호를 담는 로컬 JSON 데이터. 이름 있는 여러 프로필 지원 |
 | 짤방 | `MemeAsset`, `MemeIndex`, `config/meme_index.json` | 글 흐름에 넣을 반응 이미지 후보와 사용 맥락 태그 |
+| 멀티프레임 정지영상 | `_resize_image_bytes()`, `PIL.MpoImagePlugin.MpoImageFile`, `im.seek(0)` | MPO처럼 여러 프레임·페이지를 담지만 미리보기에서는 대표 정지 컷으로 축소하는 이미지. 진짜 애니메이션 짤방과 구분 |
+| 진짜 애니메이션 짤방 | `_resize_image_bytes()`, `fmt in {"GIF", "WEBP"}`, `im.is_animated` | GIF/WebP 움짤처럼 시간 흐름 보존이 필요한 짤방. 리사이즈 재인코딩으로 평탄화하지 않고 원본 프레임 보존 |
 | OGQ 이모티콘 | `Settings.ogq_artwork_id`, `Settings.ogq_name` | 세루리안 OGQ 삽입 위치를 초안에 표시하기 위한 설정 |
 | 초안 ID | `draft_id_from_time()`, `Draft.id` | `draft-YYYYMMDD-HHMMSS` 형식의 로컬 초안 식별자 |
 | 프로필 이름 | `StyleProfile.profile_name`, `validate_profile_name()` | 소문자·숫자·하이픈·밑줄 1-64자 슬러그. 파일명으로 사용 |

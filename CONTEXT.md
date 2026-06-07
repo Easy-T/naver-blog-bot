@@ -11,6 +11,8 @@
 | 스타일 프로필 | 작성자 문체 특성을 JSON으로 저장한 파일. `config/style_profiles/<name>.json`. |
 | 예시 포스트 | `profile-refresh` 시 스크래핑된 실제 포스트 원문(최대 3개). `config/style_profiles/<name>-examples.json`에 저장. `draft` 시 few-shot으로 Claude에 주입. |
 | 짤방 | 블로그 본문 흐름에 삽입하는 반응 이미지. `assets/memes/`에 저장, `config/meme_index.json`으로 인덱싱. |
+| 멀티프레임 정지영상 | 한 이미지 파일 안에 여러 프레임·페이지가 있지만 블로그 미리보기에서는 대표 정지 컷으로 다루는 사진 파일. iPhone MPO가 대표 예시이며, 움짤처럼 시간 흐름을 보존할 대상이 아니다. |
+| 진짜 애니메이션 짤방 | GIF/WebP처럼 여러 프레임의 시간 흐름 자체가 콘텐츠인 짤방. 미리보기 경량화 과정에서도 프레임이 평탄화되면 안 된다. |
 | 짤방 등록 | `meme-add <URL-또는-파일>` 명령으로 이미지를 `assets/memes/`에 저장하고 Claude Vision으로 태그 자동 생성. |
 | 짤방 검색 | `draft` 생성 중 `claude -p` 웹서치로 인터넷에서 문맥에 맞는 후보 이미지 URL을 찾는 행위. 별도 이미지 API 키 불필요. |
 | 문맥 기반 짤방 배치 | 메모 키워드 단순 매칭이 아닌, 생성된 초안 전체 내용을 Claude가 읽어 각 문단에 적합한 짤방을 배치하는 방식. |
