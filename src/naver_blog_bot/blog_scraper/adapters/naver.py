@@ -57,6 +57,47 @@ def post_list_url(url: str) -> str:
     return urlunparse(result)
 
 
+_CATEGORY_NO_RE = re.compile(r'"categoryNo"\s*:\s*"?(\d+)"?')
+
+
+def category_list_endpoint(url: str) -> str:
+    parsed = urlparse(normalize_naver_url(url))
+    segments = [s for s in parsed.path.split("/") if s]
+    blog_id = segments[0] if segments else ""
+    return f"https://{_MOBILE_HOST}/api/blogs/{blog_id}/category-list"
+
+
+def _parse_category_numbers(raw: str) -> list[str]:
+    cleaned = raw.strip()
+    if cleaned.startswith(")]}'"):
+        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned[4:]
+    numbers: list[str] = []
+    try:
+        data = json.loads(cleaned)
+        numbers = [str(n) for n in _walk_category_numbers(data)]
+    except json.JSONDecodeError:
+        numbers = _CATEGORY_NO_RE.findall(cleaned)
+    deduped = list(dict.fromkeys(numbers))
+    return deduped or ["0"]
+
+
+def _walk_category_numbers(node: object) -> list[int]:
+    found: list[int] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "categoryNo" and isinstance(value, (int, str)):
+                try:
+                    found.append(int(value))
+                except (TypeError, ValueError):
+                    pass
+            else:
+                found.extend(_walk_category_numbers(value))
+    elif isinstance(node, list):
+        for item in node:
+            found.extend(_walk_category_numbers(item))
+    return found
+
+
 _EMOTICON_URL_PATTERNS = [
     "ogq.me",
     "/ogq/",

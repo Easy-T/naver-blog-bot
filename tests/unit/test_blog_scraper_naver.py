@@ -429,3 +429,32 @@ def test_image_block_src_falls_back_to_data_lazy_src() -> None:
     document = parse_post_html(html, "https://m.blog.naver.com/myid/1")
     images = [b for b in document.blocks if isinstance(b, ImageBlock)]
     assert images[0].src == "https://postfiles.pstatic.net/lazy.jpg"
+
+
+def test_category_list_endpoint_builds_api_url() -> None:
+    assert (
+        naver.category_list_endpoint("https://blog.naver.com/flowerbend")
+        == "https://m.blog.naver.com/api/blogs/flowerbend/category-list"
+    )
+    assert (
+        naver.category_list_endpoint("https://m.blog.naver.com/flowerbend?categoryNo=7")
+        == "https://m.blog.naver.com/api/blogs/flowerbend/category-list"
+    )
+
+
+def test_parse_category_numbers_extracts_division_and_categories() -> None:
+    raw = (
+        '{"result":{"mylogCategoryList":['
+        '{"categoryNo":10,"categoryName":"결혼 준비"},'
+        '{"categoryNo":6,"categoryName":"맛집"}]}}'
+    )
+    assert naver._parse_category_numbers(raw) == ["10", "6"]
+
+
+def test_parse_category_numbers_strips_naver_prefix_and_dedupes() -> None:
+    raw = ')]}\',\n{"list":[{"categoryNo":"3"},{"categoryNo":"3"},{"categoryNo":"5"}]}'
+    assert naver._parse_category_numbers(raw) == ["3", "5"]
+
+
+def test_parse_category_numbers_empty_returns_zero_fallback() -> None:
+    assert naver._parse_category_numbers("{}") == ["0"]
