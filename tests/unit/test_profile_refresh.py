@@ -96,3 +96,37 @@ def test_refresh_raises_on_schema_invalid_json() -> None:
             sample_texts=["포스트"],
             completer=completer,
         )
+
+
+def test_system_prompt_requests_meme_usage_patterns() -> None:
+    completer = FakeCompleter(VALID_RESPONSE)
+    refresh_style_profile(
+        profile_name="default",
+        blog_url="https://blog.naver.com/test",
+        sample_texts=["[짤방] 빵 터졌어요"],
+        completer=completer,
+    )
+    assert "meme_usage_patterns" in completer.last_system_prompt
+    assert "[짤방]" in completer.last_system_prompt
+
+
+def test_refresh_parses_meme_usage_patterns() -> None:
+    response = json.dumps(
+        {
+            "structure_patterns": ["a"],
+            "tone_keywords": ["b"],
+            "frequent_expressions": ["c"],
+            "review_conventions": ["d"],
+            "photo_usage_notes": ["e"],
+            "emoticon_usage_patterns": ["f"],
+            "meme_usage_patterns": ["반전 직후 짤방"],
+        }
+    )
+    completer = FakeCompleter(response)
+    profile = refresh_style_profile(
+        profile_name="flowerbend",
+        blog_url="https://blog.naver.com/flowerbend",
+        sample_texts=["[짤방] 반전!"],
+        completer=completer,
+    )
+    assert profile.meme_usage_patterns == ["반전 직후 짤방"]
