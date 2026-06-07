@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     def caption_cache_path(self) -> Path:
         return self.drafts_dir / ".caption-cache.json"
 
+    @property
+    def harvest_cache_path(self) -> Path:
+        return self.config_dir / ".harvest-cache.json"
+
 
 def get_settings() -> Settings:
     return Settings()

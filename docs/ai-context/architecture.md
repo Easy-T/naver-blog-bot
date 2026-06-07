@@ -157,6 +157,21 @@ graph TD
 - 결정: 신규 `photo_describer` 모듈이 사진을 EXIF 보정·다운스케일 후 `complete_vision`으로 캡션(content-hash 캐시)하고, `PostGenerator.generate(use_vision=True)`가 캡션을 작성 프롬프트에 주입한다. `--no-vision`으로 기존 경로-only 동작으로 폴백한다.
 - 결과: 본문이 사진 내용에 근거하고 흐름에 맞게 배치된다. 비용은 캡션 캐시와 다운스케일로 완화한다.
 
+### ADR-011: 블로그 전체 학습 — 짤방 자동 수집 + 종합 프로필(이방봉)
+
+- 날짜: 2026-06-07
+- 상태: Accepted
+- 맥락: 생성 초안에 주인이 실제 쓰는 짤방이 전혀 없었다. 라이브러리엔 일반 이모지 3개뿐이었고, 스크래퍼가 본문 이미지 URL을 버려(ImageBlock이 alt만 보존) 주인의 짤방을 가져올 수단도, 짤방 사용 습관을 학습할 수단도 없었다. 또 카테고리 무관 단일 종합 프로필(별칭 "이방봉", id `flowerbend`)이 필요했다.
+- 결정:
+  1. 스크래퍼가 `ImageBlock.src`로 본문 이미지 URL을 보존하고, `naver.collect_all_post_urls`/`scrape_blog_all`/`scrape_all`로 category-list API를 통해 전 카테고리·전 글을 페이지네이션 수집한다.
+  2. 신규 `meme_harvester` 모듈이 스크랩 이미지를 다운로드→content-hash 중복제거→`complete_vision`으로 `is_meme` 분류하고, is_meme=true만 `assets/memes/`에 저장·`meme_index`에 자동 등록한다(URL+hash 사이드카 캐시 `config/.harvest-cache.json`로 재실행 시 vision 0콜). `frequency`(등장 글 수)를 집계한다.
+  3. `StyleProfile`에 7번째 축 `meme_usage_patterns`를 추가한다. 분류 결과를 `[짤방]`/`[사진]`으로 주석한 텍스트(`PostDocument.to_annotated_text`)로 프로필이 짤방 사용 습관을 학습한다. 대량 글은 배치 map-reduce(`refresh_style_profile(batch_size)` + `MERGE_PROMPT`)로 통합한다.
+  4. `profile-refresh`가 URL 소스 스크랩에서 짤방 수집을 흡수한다(`--all-categories` 전 글, `--no-memes` opt-out). 짤방 라이브러리는 전역이라 모든 프로필이 혜택을 받는다.
+  5. 생성기 후보가 비면 `MemeIndex.top_by_frequency`로 폴백한다.
+- 이유: 한 번의 전체 스크랩으로 텍스트는 프로필, 이미지는 짤방으로 동시 학습한다. `is_meme` vision 게이트 + 반복 등장(frequency) 보조 신호로 콘텐츠 사진 오등록을 억제한다. 자동 등록(사람 검수 없음)은 사용자 결정.
+- 대안: 수동 큐레이션 라이브러리(자동 발굴 아님); 웹 검색 소싱(저작권·품질·안정성 리스크); 카테고리별 분리 프로필(단일 종합 프로필 목표와 불일치).
+- 트레이드오프: 전체 블로그 스크랩 + 이미지별 vision은 1회성 학습 작업으로 느리다(캐시로 재실행 상쇄). 수집 짤방은 제3자 IP를 주인이 이미 공개 재사용 중인 것으로, 주인 본인 블로그용 동일 관행 복제(사용자 수락 범위).
+
 <!-- ADR 형식:
 ### ADR-001: <제목>
 - 날짜: YYYY-MM-DD

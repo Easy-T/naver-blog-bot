@@ -56,3 +56,30 @@ def test_structured_text_without_title_has_no_leading_blank_line() -> None:
     )
 
     assert document.to_structured_text() == "[이미지]\n마무리"
+
+
+def test_to_annotated_text_marks_memes_and_photos() -> None:
+    from naver_blog_bot.blog_scraper.models import (
+        EmoticonBlock,
+        ImageBlock,
+        PostDocument,
+        TextBlock,
+    )
+
+    doc = PostDocument(
+        url="https://m.blog.naver.com/f/1",
+        title="제목",
+        blocks=[
+            TextBlock(content="웃긴 일"),
+            ImageBlock(alt="", src="https://cdn/meme.gif"),
+            ImageBlock(alt="", src="https://cdn/photo.jpg"),
+            EmoticonBlock(description="기쁨"),
+        ],
+    )
+    text = doc.to_annotated_text({"https://cdn/meme.gif"})
+    lines = text.splitlines()
+    assert "[짤방]" in lines
+    assert "[사진]" in lines
+    assert "[이모티콘:기쁨]" in lines
+    assert text.count("[짤방]") == 1
+    assert text.count("[사진]") == 1

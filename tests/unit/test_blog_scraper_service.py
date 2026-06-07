@@ -356,3 +356,66 @@ def test_scrape_blog_no_sleep_for_single_post(tmp_path, monkeypatch):
         asyncio.run(scrape_blog(blog_url, count=1, settings=settings))
 
     assert sleep_calls == []
+
+
+def test_scrape_blog_all_collects_all_then_scrapes(tmp_path, monkeypatch):
+    from naver_blog_bot.blog_scraper.service import scrape_blog_all
+
+    blog_url = "https://m.blog.naver.com/flowerbend"
+    post_urls = [
+        "https://m.blog.naver.com/flowerbend/1",
+        "https://m.blog.naver.com/flowerbend/2",
+    ]
+    docs = [_make_doc(u) for u in post_urls]
+
+    page = MagicMock()
+    ctx = _make_context(page)
+
+    monkeypatch.setattr(
+        "naver_blog_bot.blog_scraper.service.naver.collect_all_post_urls",
+        AsyncMock(return_value=post_urls),
+    )
+    scrape_mock = AsyncMock(side_effect=docs)
+    monkeypatch.setattr(
+        "naver_blog_bot.blog_scraper.service.naver.scrape_post", scrape_mock
+    )
+    monkeypatch.setattr(
+        "naver_blog_bot.blog_scraper.service.asyncio.sleep", AsyncMock()
+    )
+
+    settings = _make_settings(tmp_path)
+
+    with _make_playwright_patcher(lambda: ctx):
+        result = asyncio.run(scrape_blog_all(blog_url, settings=settings))
+
+    assert result == docs
+    assert scrape_mock.await_count == 2
+    ctx.close.assert_awaited_once()
+
+
+def test_scrape_all_sync_wrapper_runs_async(tmp_path, monkeypatch):
+    from naver_blog_bot.blog_scraper.service import scrape_all
+
+    blog_url = "https://m.blog.naver.com/flowerbend"
+    post_urls = ["https://m.blog.naver.com/flowerbend/1"]
+    docs = [_make_doc(post_urls[0])]
+
+    page = MagicMock()
+    ctx = _make_context(page)
+
+    monkeypatch.setattr(
+        "naver_blog_bot.blog_scraper.service.naver.collect_all_post_urls",
+        AsyncMock(return_value=post_urls),
+    )
+    monkeypatch.setattr(
+        "naver_blog_bot.blog_scraper.service.naver.scrape_post",
+        AsyncMock(return_value=docs[0]),
+    )
+    monkeypatch.setattr(
+        "naver_blog_bot.blog_scraper.service.asyncio.sleep", AsyncMock()
+    )
+
+    settings = _make_settings(tmp_path)
+    with _make_playwright_patcher(lambda: ctx):
+        result = scrape_all(blog_url, settings=settings)
+    assert result == docs

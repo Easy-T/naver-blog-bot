@@ -407,3 +407,127 @@ def test_collect_blog_post_urls_category_handles_invalid_json_escapes() -> None:
         "https://m.blog.naver.com/flowerbend/224291881837",
         "https://m.blog.naver.com/flowerbend/224141677589",
     ]
+
+
+def test_image_block_captures_src_url() -> None:
+    document = parse_post_html(
+        NAVER_SMARTEDITOR_HTML, "https://m.blog.naver.com/myid/223456789"
+    )
+    images = [b for b in document.blocks if isinstance(b, ImageBlock)]
+    assert images[0].src == "https://postfiles.pstatic.net/photo.jpg"
+    assert images[1].src == "https://postfiles.pstatic.net/photo2.jpg"
+
+
+def test_image_block_src_falls_back_to_data_lazy_src() -> None:
+    html = (
+        "<html><head><title>t : 네이버 블로그</title></head><body>"
+        '<div class="se-main-container">'
+        '<div class="se-component se-image">'
+        '<img data-lazy-src="https://postfiles.pstatic.net/lazy.jpg" alt="lazy"></div>'
+        "</div></body></html>"
+    )
+    document = parse_post_html(html, "https://m.blog.naver.com/myid/1")
+    images = [b for b in document.blocks if isinstance(b, ImageBlock)]
+    assert images[0].src == "https://postfiles.pstatic.net/lazy.jpg"
+
+
+def test_category_list_endpoint_builds_api_url() -> None:
+    assert (
+        naver.category_list_endpoint("https://blog.naver.com/flowerbend")
+        == "https://m.blog.naver.com/api/blogs/flowerbend/category-list"
+    )
+    assert (
+        naver.category_list_endpoint("https://m.blog.naver.com/flowerbend?categoryNo=7")
+        == "https://m.blog.naver.com/api/blogs/flowerbend/category-list"
+    )
+
+
+def test_parse_category_numbers_extracts_division_and_categories() -> None:
+    raw = (
+        '{"result":{"mylogCategoryList":['
+        '{"categoryNo":10,"categoryName":"결혼 준비"},'
+        '{"categoryNo":6,"categoryName":"맛집"}]}}'
+    )
+    assert naver._parse_category_numbers(raw) == ["10", "6"]
+
+
+def test_parse_category_numbers_strips_naver_prefix_and_dedupes() -> None:
+    raw = ')]}\',\n{"list":[{"categoryNo":"3"},{"categoryNo":"3"},{"categoryNo":"5"}]}'
+    assert naver._parse_category_numbers(raw) == ["3", "5"]
+
+
+def test_parse_category_numbers_empty_returns_zero_fallback() -> None:
+    assert naver._parse_category_numbers("{}") == ["0"]
+
+
+def test_title_list_api_url_for_category_and_page() -> None:
+    url = naver._title_list_api_url("flowerbend", "10", 2)
+    assert "PostTitleListAsync.naver" in url
+    assert "blogId=flowerbend" in url
+    assert "categoryNo=10" in url
+    assert "currentPage=2" in url
+
+
+def test_collect_all_post_urls_paginates_each_category() -> None:
+    import json
+
+    pages = {
+        ("10", 1): {"postList": [{"logNo": "1"}, {"logNo": "2"}]},
+        ("10", 2): {"postList": []},
+        ("6", 1): {"postList": [{"logNo": "2"}, {"logNo": "9"}]},
+        ("6", 2): {"postList": []},
+    }
+
+    class FakePage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            text = str(arg)
+            if "category-list" in text:
+                return json.dumps(
+                    {
+                        "result": {
+                            "mylogCategoryList": [{"categoryNo": 10}, {"categoryNo": 6}]
+                        }
+                    }
+                )
+            from urllib.parse import parse_qs, urlparse
+
+            qs = parse_qs(urlparse(text).query)
+            cat = qs["categoryNo"][0]
+            page_no = int(qs["currentPage"][0])
+            return json.dumps(pages[(cat, page_no)])
+
+    urls = asyncio.run(
+        naver.collect_all_post_urls(FakePage(), "https://blog.naver.com/flowerbend")
+    )
+    assert urls == [
+        "https://m.blog.naver.com/flowerbend/1",
+        "https://m.blog.naver.com/flowerbend/2",
+        "https://m.blog.naver.com/flowerbend/9",
+    ]
+
+
+def test_collect_all_post_urls_raises_when_empty() -> None:
+    import json
+
+    class FakePage:
+        async def goto(self, url: str, **kwargs: object) -> None:
+            return None
+
+        async def wait_for_timeout(self, ms: int) -> None:
+            return None
+
+        async def evaluate(self, script: str, arg: object = None) -> str:
+            if "category-list" in str(arg):
+                return json.dumps({"list": [{"categoryNo": 0}]})
+            return json.dumps({"postList": []})
+
+    with pytest.raises(ValueError, match="no posts found"):
+        asyncio.run(
+            naver.collect_all_post_urls(FakePage(), "https://blog.naver.com/foo")
+        )

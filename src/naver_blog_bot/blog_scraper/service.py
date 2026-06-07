@@ -76,6 +76,26 @@ async def scrape_blog(url: str, count: int, settings: Settings) -> list[PostDocu
     return results
 
 
+async def scrape_blog_all(url: str, settings: Settings) -> list[PostDocument]:
+    async with async_playwright() as pw:
+        context = await _make_context(pw, naver_persistent=True, settings=settings)
+        page = await context.new_page()
+        try:
+            post_urls = await naver.collect_all_post_urls(page, url)
+            results: list[PostDocument] = []
+            for i, post_url in enumerate(post_urls):
+                if i > 0:
+                    await asyncio.sleep(1)
+                results.append(await naver.scrape_post(page, post_url))
+        finally:
+            await context.close()
+    return results
+
+
+def scrape_all(url: str, settings: Settings) -> list[PostDocument]:
+    return asyncio.run(scrape_blog_all(url, settings))
+
+
 def scrape(url: str, count: int, settings: Settings) -> list[PostDocument]:
     hostname = urlparse(url).hostname or ""
 

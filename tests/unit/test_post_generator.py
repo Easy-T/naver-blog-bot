@@ -224,3 +224,40 @@ def test_generate_no_vision_skips_vision(tmp_path: Path) -> None:
 
     assert fake.vision_calls == 0
     assert str(photo) in fake.calls[0]["user_prompt"]
+
+
+def test_generate_falls_back_to_top_frequency_when_memo_no_match() -> None:
+    fake = FakeClaude()
+    now = datetime(2026, 6, 7, 12, 0, 0, tzinfo=timezone.utc)
+    settings = Settings()
+    generator = PostGenerator(settings=settings, claude_client=fake, now=lambda: now)
+    style_profile = StyleProfile(blog_url="https://blog.naver.com/flowerbend")
+    meme_index = MemeIndex(
+        memes=[
+            MemeAsset(
+                id="popular",
+                path=Path("a.png"),
+                tags=["없음매칭"],
+                use_cases=["전혀안겹침"],
+                alt_text="x",
+                frequency=9,
+            ),
+            MemeAsset(
+                id="rare",
+                path=Path("b.png"),
+                tags=["딴거"],
+                use_cases=["딴상황"],
+                alt_text="y",
+                frequency=1,
+            ),
+        ]
+    )
+
+    generator.generate(
+        photo_paths=[Path("p.jpg")],
+        memo="메모에는 태그가 전혀 안 들어있음",
+        style_profile=style_profile,
+        meme_index=meme_index,
+        use_vision=False,
+    )
+    assert "popular" in fake.calls[0]["user_prompt"]

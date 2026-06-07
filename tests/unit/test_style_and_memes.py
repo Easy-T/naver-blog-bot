@@ -283,3 +283,41 @@ def test_extract_meme_json_raises_on_garbage() -> None:
 
     with pytest.raises(ValueError, match="invalid JSON"):
         _extract_meme_json("이건 JSON이 전혀 아님")
+
+
+def test_meme_asset_frequency_defaults_to_one(tmp_path: Path) -> None:
+    from naver_blog_bot.meme_library.models import MemeAsset
+
+    asset = MemeAsset(id="x", path=Path("assets/memes/x.png"))
+    assert asset.frequency == 1
+
+
+def test_top_by_frequency_ranks_descending() -> None:
+    from naver_blog_bot.meme_library.models import MemeAsset, MemeIndex
+
+    index = MemeIndex(
+        memes=[
+            MemeAsset(id="rare", path=Path("a.png"), frequency=1),
+            MemeAsset(id="common", path=Path("b.png"), frequency=9),
+            MemeAsset(id="mid", path=Path("c.png"), frequency=4),
+        ]
+    )
+    top = index.top_by_frequency(limit=2)
+    assert [m.id for m in top] == ["common", "mid"]
+
+
+def test_style_profile_has_meme_usage_patterns_axis() -> None:
+    profile = StyleProfile(
+        blog_url="https://blog.naver.com/flowerbend",
+        meme_usage_patterns=["반전 직후 짤방 1개", "웃긴 에피소드 끝에 움짤"],
+    )
+    assert profile.meme_usage_patterns == [
+        "반전 직후 짤방 1개",
+        "웃긴 에피소드 끝에 움짤",
+    ]
+    assert "반전 직후 짤방 1개" in profile.to_cache_text()
+
+
+def test_meme_usage_patterns_defaults_empty() -> None:
+    profile = StyleProfile(blog_url="https://blog.naver.com/flowerbend")
+    assert profile.meme_usage_patterns == []

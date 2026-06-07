@@ -57,6 +57,47 @@ def post_list_url(url: str) -> str:
     return urlunparse(result)
 
 
+_CATEGORY_NO_RE = re.compile(r'"categoryNo"\s*:\s*"?(\d+)"?')
+
+
+def category_list_endpoint(url: str) -> str:
+    parsed = urlparse(normalize_naver_url(url))
+    segments = [s for s in parsed.path.split("/") if s]
+    blog_id = segments[0] if segments else ""
+    return f"https://{_MOBILE_HOST}/api/blogs/{blog_id}/category-list"
+
+
+def _parse_category_numbers(raw: str) -> list[str]:
+    cleaned = raw.strip()
+    if cleaned.startswith(")]}'"):
+        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned[4:]
+    numbers: list[str] = []
+    try:
+        data = json.loads(cleaned)
+        numbers = [str(n) for n in _walk_category_numbers(data)]
+    except json.JSONDecodeError:
+        numbers = _CATEGORY_NO_RE.findall(cleaned)
+    deduped = list(dict.fromkeys(numbers))
+    return deduped or ["0"]
+
+
+def _walk_category_numbers(node: object) -> list[int]:
+    found: list[int] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "categoryNo" and isinstance(value, (int, str)):
+                try:
+                    found.append(int(value))
+                except (TypeError, ValueError):
+                    pass
+            else:
+                found.extend(_walk_category_numbers(value))
+    elif isinstance(node, list):
+        for item in node:
+            found.extend(_walk_category_numbers(item))
+    return found
+
+
 _EMOTICON_URL_PATTERNS = [
     "ogq.me",
     "/ogq/",
@@ -81,13 +122,21 @@ def is_emoticon_img_attrs(src: str, classes: str) -> bool:
     return False
 
 
+def _img_src(img: HtmlNode) -> str:
+    for attr in ("src", "data-lazy-src", "data-src"):
+        value = img.attrs.get(attr, "")
+        if value:
+            return value
+    return ""
+
+
 def _img_block_from_node(img: HtmlNode) -> ImageBlock | EmoticonBlock:
-    src = img.attrs.get("src", "")
+    src = _img_src(img)
     alt = img.attrs.get("alt", "")
     classes = img.attrs.get("class", "")
     if is_emoticon_img_attrs(src, classes):
         return EmoticonBlock(description=alt)
-    return ImageBlock(alt=alt)
+    return ImageBlock(alt=alt, src=src)
 
 
 def _classify_se_component(component: HtmlNode) -> list[PostBlock]:
@@ -231,6 +280,69 @@ def category_list_api_url(url: str) -> str | None:
         }
     )
     return f"https://{_PC_HOST}/PostTitleListAsync.naver?{query}"
+
+
+_MAX_CATEGORY_PAGES = 100
+
+
+def _title_list_api_url(blog_id: str, category_no: str, current_page: int) -> str:
+    query = urlencode(
+        {
+            "blogId": blog_id,
+            "categoryNo": category_no,
+            "countPerPage": 30,
+            "currentPage": current_page,
+        }
+    )
+    return f"https://{_PC_HOST}/PostTitleListAsync.naver?{query}"
+
+
+async def _fetch_json_text(page: object, api_url: str) -> str:
+    return await page.evaluate(  # type: ignore[attr-defined]
+        """async (apiUrl) => {
+            const r = await fetch(apiUrl, {headers: {'Accept': 'application/json'}, credentials: 'include'});
+            return await r.text();
+        }""",
+        api_url,
+    )
+
+
+async def collect_all_post_urls(page: object, url: str) -> list[str]:
+    parsed = urlparse(normalize_naver_url(url))
+    segments = [s for s in parsed.path.split("/") if s]
+    blog_id = segments[0] if segments else ""
+
+    await page.goto(  # type: ignore[attr-defined]
+        f"https://{_PC_HOST}/{blog_id}", wait_until="networkidle"
+    )
+
+    cat_raw = await _fetch_json_text(page, category_list_endpoint(url))
+    category_numbers = _parse_category_numbers(cat_raw)
+
+    log_nos: list[str] = []
+    seen: set[str] = set()
+    for category_no in category_numbers:
+        for current_page in range(1, _MAX_CATEGORY_PAGES + 1):
+            api_url = _title_list_api_url(blog_id, category_no, current_page)
+            raw = await _fetch_json_text(page, api_url)
+            data = _parse_naver_json(raw)
+            page_log_nos = [
+                str(p["logNo"]) for p in (data.get("postList") or []) if p.get("logNo")
+            ]
+            if not page_log_nos:
+                break
+            new_on_page = False
+            for log_no in page_log_nos:
+                if log_no not in seen:
+                    seen.add(log_no)
+                    log_nos.append(log_no)
+                    new_on_page = True
+            if not new_on_page:
+                break
+
+    if not log_nos:
+        raise ValueError(f"no posts found at {url}")
+    return [f"https://{_MOBILE_HOST}/{blog_id}/{log_no}" for log_no in log_nos]
 
 
 def _select_post_urls_from_titlelist(

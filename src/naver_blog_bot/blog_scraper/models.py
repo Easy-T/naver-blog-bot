@@ -11,6 +11,7 @@ class TextBlock(BaseModel):
 class ImageBlock(BaseModel):
     type: Literal["image"] = "image"
     alt: str = ""
+    src: str = ""
 
 
 class EmoticonBlock(BaseModel):
@@ -37,6 +38,22 @@ class PostDocument(BaseModel):
                     lines.append(stripped)
             elif block.type == "image":
                 lines.append("[이미지]")
+            elif block.type == "emoticon":
+                description = f":{block.description}" if block.description else ""
+                lines.append(f"[이모티콘{description}]")
+        return "\n".join(lines)
+
+    def to_annotated_text(self, meme_srcs: set[str]) -> str:
+        lines: list[str] = []
+        if self.title:
+            lines += [f"제목: {self.title}", ""]
+        for block in self.blocks:
+            if block.type == "text":
+                stripped = block.content.strip()
+                if stripped:
+                    lines.append(stripped)
+            elif block.type == "image":
+                lines.append("[짤방]" if block.src in meme_srcs else "[사진]")
             elif block.type == "emoticon":
                 description = f":{block.description}" if block.description else ""
                 lines.append(f"[이모티콘{description}]")
