@@ -11,6 +11,7 @@ class MemeAsset(BaseModel):
     tags: list[str] = Field(default_factory=list)
     use_cases: list[str] = Field(default_factory=list)
     alt_text: str = ""
+    frequency: int = 1
 
 
 class MemeIndex(BaseModel):
@@ -29,6 +30,10 @@ class MemeIndex(BaseModel):
                 scored.append((score, meme))
         scored.sort(key=lambda item: (-item[0], item[1].id))
         return [meme for _, meme in scored[:limit]]
+
+    def top_by_frequency(self, limit: int = 3) -> list["MemeAsset"]:
+        ranked = sorted(self.memes, key=lambda m: (-m.frequency, m.id))
+        return ranked[:limit]
 
     def to_cache_text(self) -> str:
         data = {"memes": [m.model_dump(mode="json") for m in self.memes]}
