@@ -68,7 +68,9 @@ class PostGenerator:
                 self.claude_client,  # type: ignore[arg-type]
                 cache_path=self.settings.caption_cache_path,
             )
-        selected_memes = meme_index.candidates_for_memo(memo)
+        selected_memes = (
+            meme_index.candidates_for_memo(memo) or meme_index.top_by_frequency()
+        )
         body_markdown = self.claude_client.complete_text(
             system_prompt=SYSTEM_PROMPT,
             cacheable_context=[
