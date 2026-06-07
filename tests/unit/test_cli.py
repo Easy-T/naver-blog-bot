@@ -655,3 +655,140 @@ def test_preview_copies_paste_text_and_writes_txt(monkeypatch, tmp_path: Path) -
     # Clipboard received the paste-text, not raw markdown.
     assert clip.copied == txt
     assert "{{이모티콘:" not in clip.copied
+
+
+def test_profile_refresh_all_categories_harvests_memes(tmp_path, monkeypatch):
+    import naver_blog_bot.cli as cli
+    from naver_blog_bot.blog_scraper.models import ImageBlock, PostDocument, TextBlock
+    from naver_blog_bot.meme_harvester.models import HarvestResult
+    from naver_blog_bot.meme_library.models import MemeAsset
+    from naver_blog_bot.style_profiler.models import StyleProfile
+    from typer.testing import CliRunner
+
+    monkeypatch.setenv("NAVER_BOT_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("NAVER_BOT_DRAFTS_DIR", str(tmp_path / "drafts"))
+    monkeypatch.setenv("NAVER_BOT_MEMES_DIR", str(tmp_path / "memes"))
+    monkeypatch.setenv("NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "bp"))
+
+    docs = [
+        PostDocument(
+            url="https://m.blog.naver.com/flowerbend/1",
+            title="t",
+            blocks=[
+                TextBlock(content="본문"),
+                ImageBlock(alt="", src="https://cdn/m.gif"),
+            ],
+        )
+    ]
+    all_called = {}
+
+    def fake_scrape_all(url, settings):
+        all_called["url"] = url
+        return docs
+
+    def fake_harvest(documents, vision_client, *, memes_dir, cache_path, fetch=None):
+        return HarvestResult(
+            assets=[
+                MemeAsset(
+                    id="harvested-abc",
+                    path=memes_dir / "harvested-abc.gif",
+                    tags=["웃음"],
+                    use_cases=["유머"],
+                    alt_text="ㅋㅋ",
+                    frequency=3,
+                )
+            ],
+            meme_srcs=["https://cdn/m.gif"],
+        )
+
+    captured = {}
+
+    def fake_refresh(*, profile_name, blog_url, sample_texts, completer, batch_size=12):
+        captured["sample_texts"] = list(sample_texts)
+        return StyleProfile(
+            profile_name=profile_name,
+            blog_url=blog_url,
+            meme_usage_patterns=["반전 직후 짤방"],
+        )
+
+    class FakeCompleter:
+        def complete_text(self, **k):
+            return "{}"
+
+        def complete_vision(self, **k):
+            return "{}"
+
+    monkeypatch.setattr(cli, "scrape_source", lambda *a, **k: docs)
+    monkeypatch.setattr(cli, "scrape_all", fake_scrape_all)
+    monkeypatch.setattr(cli, "harvest_memes", fake_harvest)
+    monkeypatch.setattr(cli, "refresh_style_profile", fake_refresh)
+    monkeypatch.setattr(cli, "build_text_completer", lambda settings: FakeCompleter())
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli.app,
+        [
+            "profile-refresh",
+            "https://blog.naver.com/flowerbend",
+            "--profile",
+            "flowerbend",
+            "--all-categories",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert all_called["url"] == "https://blog.naver.com/flowerbend"
+    from naver_blog_bot.meme_library.service import load_meme_index
+
+    index = load_meme_index(tmp_path / "config" / "meme_index.json")
+    assert any(m.id == "harvested-abc" for m in index.memes)
+    assert any("[짤방]" in t for t in captured["sample_texts"])
+
+
+def test_profile_refresh_no_memes_skips_harvest(tmp_path, monkeypatch):
+    import naver_blog_bot.cli as cli
+    from naver_blog_bot.blog_scraper.models import ImageBlock, PostDocument, TextBlock
+    from naver_blog_bot.style_profiler.models import StyleProfile
+    from typer.testing import CliRunner
+
+    monkeypatch.setenv("NAVER_BOT_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("NAVER_BOT_DRAFTS_DIR", str(tmp_path / "drafts"))
+    monkeypatch.setenv("NAVER_BOT_MEMES_DIR", str(tmp_path / "memes"))
+    monkeypatch.setenv("NAVER_BOT_BROWSER_PROFILE_DIR", str(tmp_path / "bp"))
+
+    docs = [
+        PostDocument(
+            url="https://m.blog.naver.com/flowerbend/1",
+            title="t",
+            blocks=[
+                TextBlock(content="본문"),
+                ImageBlock(alt="", src="https://cdn/m.gif"),
+            ],
+        )
+    ]
+
+    def boom(*a, **k):
+        raise AssertionError("harvest must not run with --no-memes")
+
+    monkeypatch.setattr(cli, "scrape_source", lambda *a, **k: docs)
+    monkeypatch.setattr(cli, "harvest_memes", boom)
+    monkeypatch.setattr(
+        cli,
+        "refresh_style_profile",
+        lambda **k: StyleProfile(
+            profile_name=k["profile_name"], blog_url=k["blog_url"]
+        ),
+    )
+    monkeypatch.setattr(cli, "build_text_completer", lambda settings: object())
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli.app,
+        [
+            "profile-refresh",
+            "https://blog.naver.com/flowerbend",
+            "--profile",
+            "flowerbend",
+            "--no-memes",
+        ],
+    )
+    assert result.exit_code == 0, result.output

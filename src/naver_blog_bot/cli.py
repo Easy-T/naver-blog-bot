@@ -15,7 +15,9 @@ except ImportError:
 
 from naver_blog_bot.blog_scraper.login import run_login
 from naver_blog_bot.blog_scraper.service import scrape as scrape_source
+from naver_blog_bot.blog_scraper.service import scrape_all
 from naver_blog_bot.config import Settings, ensure_local_directories, get_settings
+from naver_blog_bot.meme_harvester.service import harvest_memes
 from naver_blog_bot.meme_library.service import (
     add_or_update_meme,
     ensure_in_memes_dir,
@@ -85,6 +87,16 @@ def profile_refresh_command(
         int,
         typer.Option("--count", help="Number of posts to scrape per URL source."),
     ] = 5,
+    all_categories: Annotated[
+        bool,
+        typer.Option(
+            "--all-categories", help="전 카테고리·모든 글을 스크랩(종합 프로필)."
+        ),
+    ] = False,
+    no_memes: Annotated[
+        bool,
+        typer.Option("--no-memes", help="짤방 자동 수집 생략(스타일만 학습)."),
+    ] = False,
 ) -> None:
     settings = get_settings()
     ensure_local_directories(settings)
@@ -106,13 +118,18 @@ def profile_refresh_command(
     sample_texts: list[str] = []
     url_examples: list[ExamplePost] = []
     first_url: str | None = None
+    scraped_docs: list = []
+    text_slots: list = []  # 소스 순서 보존: ("file", text) 또는 ("doc", PostDocument)
 
     for source in sources:
         if _is_url_source(source):
             if first_url is None:
                 first_url = source
             try:
-                docs = scrape_source(source, count, settings)
+                if all_categories:
+                    docs = scrape_all(source, settings)
+                else:
+                    docs = scrape_source(source, count, settings)
             except ValueError as exc:
                 typer.echo(f"Error: {exc}")
                 raise typer.Exit(1)
@@ -120,7 +137,8 @@ def profile_refresh_command(
                 typer.echo(f"Error: no posts found at {source}")
                 raise typer.Exit(1)
             for doc in docs:
-                sample_texts.append(doc.to_structured_text())
+                scraped_docs.append(doc)
+                text_slots.append(("doc", doc))
                 url_examples.append(
                     ExamplePost(
                         title=doc.title or "",
@@ -133,7 +151,34 @@ def profile_refresh_command(
             if not path.is_file():
                 typer.echo(f"Error: sample file not found: {source}")
                 raise typer.Exit(1)
-            sample_texts.append(path.read_text(encoding="utf-8"))
+            text_slots.append(("file", path.read_text(encoding="utf-8")))
+
+    meme_srcs: set[str] = set()
+    if scraped_docs and not no_memes:
+        completer = build_text_completer(settings)
+        if hasattr(completer, "complete_vision"):
+            result = harvest_memes(
+                scraped_docs,
+                completer,
+                memes_dir=settings.memes_dir,
+                cache_path=settings.harvest_cache_path,
+            )
+            meme_srcs = set(result.meme_srcs)
+            index = load_meme_index(settings.meme_index_path)
+            for asset in result.assets:
+                index = add_or_update_meme(index, asset)
+            save_meme_index(settings.meme_index_path, index)
+            typer.echo(f"Harvested memes: {len(result.assets)}")
+
+    for kind, payload in text_slots:
+        if kind == "file":
+            sample_texts.append(payload)
+        else:
+            sample_texts.append(
+                payload.to_annotated_text(meme_srcs)
+                if meme_srcs
+                else payload.to_structured_text()
+            )
 
     blog_url = first_url if first_url is not None else settings.blog_url
 
