@@ -407,3 +407,25 @@ def test_collect_blog_post_urls_category_handles_invalid_json_escapes() -> None:
         "https://m.blog.naver.com/flowerbend/224291881837",
         "https://m.blog.naver.com/flowerbend/224141677589",
     ]
+
+
+def test_image_block_captures_src_url() -> None:
+    document = parse_post_html(
+        NAVER_SMARTEDITOR_HTML, "https://m.blog.naver.com/myid/223456789"
+    )
+    images = [b for b in document.blocks if isinstance(b, ImageBlock)]
+    assert images[0].src == "https://postfiles.pstatic.net/photo.jpg"
+    assert images[1].src == "https://postfiles.pstatic.net/photo2.jpg"
+
+
+def test_image_block_src_falls_back_to_data_lazy_src() -> None:
+    html = (
+        "<html><head><title>t : 네이버 블로그</title></head><body>"
+        '<div class="se-main-container">'
+        '<div class="se-component se-image">'
+        '<img data-lazy-src="https://postfiles.pstatic.net/lazy.jpg" alt="lazy"></div>'
+        "</div></body></html>"
+    )
+    document = parse_post_html(html, "https://m.blog.naver.com/myid/1")
+    images = [b for b in document.blocks if isinstance(b, ImageBlock)]
+    assert images[0].src == "https://postfiles.pstatic.net/lazy.jpg"

@@ -11,6 +11,7 @@ class TextBlock(BaseModel):
 class ImageBlock(BaseModel):
     type: Literal["image"] = "image"
     alt: str = ""
+    src: str = ""
 
 
 class EmoticonBlock(BaseModel):

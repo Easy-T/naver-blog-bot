@@ -81,13 +81,21 @@ def is_emoticon_img_attrs(src: str, classes: str) -> bool:
     return False
 
 
+def _img_src(img: HtmlNode) -> str:
+    for attr in ("src", "data-lazy-src", "data-src"):
+        value = img.attrs.get(attr, "")
+        if value:
+            return value
+    return ""
+
+
 def _img_block_from_node(img: HtmlNode) -> ImageBlock | EmoticonBlock:
-    src = img.attrs.get("src", "")
+    src = _img_src(img)
     alt = img.attrs.get("alt", "")
     classes = img.attrs.get("class", "")
     if is_emoticon_img_attrs(src, classes):
         return EmoticonBlock(description=alt)
-    return ImageBlock(alt=alt)
+    return ImageBlock(alt=alt, src=src)
 
 
 def _classify_se_component(component: HtmlNode) -> list[PostBlock]:
