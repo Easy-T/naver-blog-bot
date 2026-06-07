@@ -27,6 +27,7 @@ Thumbs.db
 config/style_profile.json
 config/style_profiles/
 config/meme_index.json
+config/.harvest-cache.json
 assets/memes/
 drafts/
 browser-profile/
