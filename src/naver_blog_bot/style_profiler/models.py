@@ -14,6 +14,7 @@ class StyleProfile(BaseModel):
     review_conventions: list[str] = Field(default_factory=list)
     photo_usage_notes: list[str] = Field(default_factory=list)
     emoticon_usage_patterns: list[str] = Field(default_factory=list)
+    meme_usage_patterns: list[str] = Field(default_factory=list)
 
     def to_cache_text(self) -> str:
         data = {
@@ -23,5 +24,6 @@ class StyleProfile(BaseModel):
             "review_conventions": self.review_conventions,
             "photo_usage_notes": self.photo_usage_notes,
             "emoticon_usage_patterns": self.emoticon_usage_patterns,
+            "meme_usage_patterns": self.meme_usage_patterns,
         }
         return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)

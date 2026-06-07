@@ -304,3 +304,20 @@ def test_top_by_frequency_ranks_descending() -> None:
     )
     top = index.top_by_frequency(limit=2)
     assert [m.id for m in top] == ["common", "mid"]
+
+
+def test_style_profile_has_meme_usage_patterns_axis() -> None:
+    profile = StyleProfile(
+        blog_url="https://blog.naver.com/flowerbend",
+        meme_usage_patterns=["반전 직후 짤방 1개", "웃긴 에피소드 끝에 움짤"],
+    )
+    assert profile.meme_usage_patterns == [
+        "반전 직후 짤방 1개",
+        "웃긴 에피소드 끝에 움짤",
+    ]
+    assert "반전 직후 짤방 1개" in profile.to_cache_text()
+
+
+def test_meme_usage_patterns_defaults_empty() -> None:
+    profile = StyleProfile(blog_url="https://blog.naver.com/flowerbend")
+    assert profile.meme_usage_patterns == []
